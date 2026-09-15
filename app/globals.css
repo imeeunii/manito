@@ -138,7 +138,9 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 .class-code-card p { grid-column: 1; margin: 0; color: var(--muted); font-size: .85rem; font-weight: 800; }
 .class-code-card > strong { grid-column: 1; font-size: clamp(2rem, 8vw, 3rem); letter-spacing: .13em; color: var(--blue-dark); }
-.code-copy { grid-column: 2; grid-row: 1 / 3; width: auto; min-width: 130px; background: white; border: 1px solid #d7d1ee; }
+.class-code-actions { grid-column: 2; grid-row: 1 / 3; display: grid; gap: 8px; min-width: 160px; }
+.code-copy { width: auto; background: white; border: 1px solid #d7d1ee; }
+.link-copy { width: auto; color: #315f52; background: var(--mint); border: 1px solid #b8dfcf; }
 .share-guide { margin: 14px 3px 22px; color: var(--muted); line-height: 1.6; font-size: .9rem; }
 .status-card { padding: 22px; border-radius: 20px; background: #f8fafc; border: 1px solid var(--line); }
 .status-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -193,9 +195,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px
   .role-buttons, .dashboard-actions, .mission-fields { grid-template-columns: 1fr; }
   .role-button { min-height: 104px; }
   .class-code-card { grid-template-columns: 1fr; text-align: center; }
-  .class-code-card p, .class-code-card > strong, .code-copy { grid-column: 1; grid-row: auto; }
+  .class-code-card p, .class-code-card > strong, .class-code-actions { grid-column: 1; grid-row: auto; }
   .class-code-card > strong { font-size: 2.15rem; }
-  .code-copy { width: 100%; margin-top: 8px; }
+  .class-code-actions { width: 100%; margin-top: 8px; }
   .dashboard-bottom { flex-direction: column; }
   .text-button { width: 100%; }
   .assignment-row p { grid-template-columns: 1fr; gap: 2px; }
