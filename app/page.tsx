@@ -136,6 +136,14 @@ export default function Home() {
   async function handleStudentCheck(event?: FormEvent<HTMLFormElement>, override?: { code: string; number: number }) {
     event?.preventDefault();
     const code = normalizeCode(override?.code ?? studentCode); const number = override?.number ?? Number(studentNumber);
+    if (code.length !== 6) {
+      const validationError = new Error("반 코드는 영문과 숫자 6자리로 입력해 주세요.");
+      showMessage(validationError.message, true); throw validationError;
+    }
+    if (!Number.isInteger(number) || number < 1 || number > 50) {
+      const validationError = new Error("내 번호를 1~50 사이의 숫자로 입력해 주세요.");
+      showMessage(validationError.message, true); throw validationError;
+    }
     setBusy(true);
     try {
       const data = await callApi<StudentResult>({ action: "studentCheck", code, studentNumber: number });
@@ -325,8 +333,8 @@ export default function Home() {
         <div className="panel-heading"><span>🐣</span><div><p>학생</p><h2>학생용 확인</h2></div></div>
         {!studentResult && <><p className="panel-guide">선생님이 알려 준 반 코드와 내 번호를 입력해 주세요.</p>
           <form onSubmit={(event) => void handleStudentCheck(event).catch(() => undefined)} className="form-stack">
-            <label>반 코드<input value={studentCode} onChange={(e) => setStudentCode(normalizeCode(e.target.value))} placeholder="예: A7K9P2" maxLength={6} required /></label>
-            <label>번호<input value={studentNumber} onChange={(e) => setStudentNumber(e.target.value)} type="number" min="1" max="50" inputMode="numeric" placeholder="예: 12" required /></label>
+            <label>반 코드<input className="class-code-input" value={studentCode} onChange={(e) => setStudentCode(normalizeCode(e.target.value))} placeholder="예: A7K9P2" maxLength={6} inputMode="text" autoCapitalize="characters" autoCorrect="off" spellCheck={false} enterKeyHint="next" required /></label>
+            <label>번호<input value={studentNumber} onChange={(e) => setStudentNumber(e.target.value.replace(/\D/g, "").slice(0, 2))} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} enterKeyHint="done" placeholder="예: 12" required /></label>
             <button className="button secondary" disabled={busy}>{busy ? "확인 중…" : "🔍 확인"}</button>
           </form></>}
         {activeResult && <div className="student-result">
@@ -340,7 +348,7 @@ export default function Home() {
           <button className="button quiet" onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); void saveReflection(); setStudentResult(null); setMessage(""); }}>확인했어요</button>
         </div>}
         {studentResult?.mode === "ended" && <div className="student-result end-reveal">
-          <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">누가 쓴 편지인지는 나중에 공개돼요.</p>
+          <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">누가 쓴 편지인지는 공개되지 않아요.</p>
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
           <button className="button quiet" onClick={() => { setStudentResult(null); setMessage(""); }}>확인했어요</button>

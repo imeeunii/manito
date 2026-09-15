@@ -32,7 +32,7 @@ body {
     linear-gradient(145deg, #faf7ff 0%, #f7faff 48%, #f7fcfa 100%);
 }
 button, input, textarea { font: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; }
 
 .page-shell { width: min(1000px, calc(100% - 40px)); margin: 0 auto; padding: 54px 0 30px; }
 .intro { max-width: 680px; margin: 0 auto 34px; text-align: center; }
@@ -96,6 +96,7 @@ input, textarea {
   outline: none; background: #fff; transition: border-color .15s ease, box-shadow .15s ease;
 }
 input:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(114,131,201,.14); }
+.class-code-input { text-transform: uppercase; letter-spacing: .12em; font-weight: 850; }
 textarea { resize: vertical; line-height: 1.6; }
 .button {
   width: 100%; min-height: 49px; padding: 12px 16px; color: var(--ink); font-weight: 900; border: 0;
@@ -162,6 +163,7 @@ textarea { resize: vertical; line-height: 1.6; }
 .text-button { flex: 0 0 auto; color: var(--danger); }
 
 .student-result { text-align: center; }
+.student-result, .mission-box, .received { overflow-wrap: anywhere; }
 .result-label { margin-bottom: 6px; color: var(--muted); font-weight: 800; }
 .result-number { margin-bottom: 12px; font-size: 1.5rem; font-weight: 900; }
 .result-number strong { color: var(--blue-dark); font-size: 3.2rem; }
@@ -187,10 +189,24 @@ footer { margin-top: 27px; color: var(--muted); text-align: center; font-size: .
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px solid rgba(255,226,128,.75); outline-offset: 3px; }
 
 @media (max-width: 640px) {
-  .page-shell { width: min(100% - 24px, 1000px); padding-top: 32px; }
-  .intro { margin-bottom: 25px; }
-  .intro-symbol { width: 54px; height: 54px; }
-  .panel { padding: 24px 20px; border-radius: 23px; }
+  .page-shell { width: 100%; padding: max(20px, env(safe-area-inset-top)) 12px max(26px, env(safe-area-inset-bottom)); }
+  .intro { margin-bottom: 18px; padding: 0 8px; }
+  .intro-symbol { width: 50px; height: 50px; margin-bottom: 9px; border-radius: 17px; font-size: 1.45rem; box-shadow: 4px 5px 0 var(--ink); }
+  .emoji-row { display: none; }
+  .eyebrow { margin-bottom: 7px; padding: 6px 11px; font-size: .8rem; }
+  h1 { margin-bottom: 6px; font-size: clamp(2.15rem, 12vw, 3rem); }
+  .description { font-size: 1rem; line-height: 1.5; }
+  .panel { padding: 22px 18px max(22px, env(safe-area-inset-bottom)); border-radius: 22px; }
+  .student-panel { min-height: min(620px, calc(100dvh - 190px)); }
+  .back-button { min-height: 44px; margin-bottom: 10px; }
+  .panel-heading { margin-bottom: 16px; }
+  .panel-heading > span { width: 43px; height: 43px; }
+  .panel-heading h2 { font-size: 1.4rem; }
+  .panel-guide { margin-bottom: 17px; font-size: .95rem; }
+  .form-stack { gap: 16px; }
+  input, textarea { padding: 14px; font-size: 16px; }
+  .button { min-height: 54px; }
+  .student-panel .form-stack .secondary { margin-top: 2px; }
   .role-buttons, .dashboard-actions, .mission-fields, .writing-status { grid-template-columns: 1fr; }
   .role-button { min-height: 104px; }
   .class-code-card { grid-template-columns: 1fr; text-align: center; }
@@ -199,6 +215,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px
   .code-copy { width: 100%; margin-top: 8px; }
   .dashboard-bottom { flex-direction: column; }
   .text-button { width: 100%; }
+  .result-number { margin-bottom: 10px; }
+  .result-number strong { font-size: 3.4rem; }
+  .result-guide { font-size: .95rem; }
+  .mission-box { margin-top: 17px; padding: 17px; }
+  .reflection { margin-top: 19px; }
+  .reflection textarea { min-height: 132px; }
+  .strengths { padding: 16px; }
+  .quiet { margin-top: 14px; }
+  .received { padding: 17px; }
+  footer { margin-top: 20px; padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@media (max-width: 380px) {
+  .page-shell { padding-left: 8px; padding-right: 8px; }
+  .panel { padding-left: 16px; padding-right: 16px; border-radius: 19px; }
+  .result-number strong { font-size: 3rem; }
+}
+
+@media (hover: none) {
+  .button:hover:not(:disabled), .role-button:hover { transform: none; }
+  .button:active:not(:disabled), .role-button:active { transform: scale(.985); }
 }
 
 @media (prefers-reduced-motion: reduce) {
