@@ -9,7 +9,7 @@ type ClassRow = {
   assignments: string;
   custom_missions: string;
   teacher_pin_hash: string;
-  status: "active" | "ended";
+  status: "active" | "ended" | "revealed";
 };
 
 type EntryRow = {
@@ -126,7 +126,7 @@ async function teacherDashboard(row: ClassRow) {
     status: row.status,
   };
 
-  if (row.status === "ended") {
+  if (row.status !== "active") {
     const assignments = parseJson<Record<string, number>>(row.assignments, {});
     const entriesByStudent = new Map(
       entries.results.map((entry) => [entry.student_number, entry])
@@ -222,7 +222,7 @@ async function studentCheck(payload: Record<string, unknown>) {
   }
 
   const assignments = parseJson<Record<string, number>>(row.assignments, {});
-  if (row.status === "ended") {
+  if (row.status !== "active") {
     const sender = Object.entries(assignments).find(([, target]) => target === studentNumber)?.[0];
     const entry = sender
       ? await getDatabase()
@@ -235,6 +235,7 @@ async function studentCheck(payload: Record<string, unknown>) {
     return {
       mode: "ended",
       className: row.name,
+      watcherNumber: row.status === "revealed" && sender ? Number(sender) : null,
       received: {
         letter: entry?.letter ?? "",
         strengths: [entry?.strength_one ?? "", entry?.strength_two ?? ""].filter(Boolean),
@@ -305,6 +306,17 @@ export async function POST(request: Request) {
     if (action === "endActivity") {
       const row = await requireTeacher(payload.code, payload.pin);
       await getDatabase().prepare("UPDATE classes SET status = 'ended' WHERE id = ?").bind(row.id).run();
+      const updated = await findClass(row.code);
+      return Response.json(await teacherDashboard(updated!));
+    }
+    if (action === "revealManitto") {
+      const row = await requireTeacher(payload.code, payload.pin);
+      if (row.status === "active") {
+        throw new Response("먼저 현재 활동을 종료해 주세요.", { status: 409 });
+      }
+      if (row.status === "ended") {
+        await getDatabase().prepare("UPDATE classes SET status = 'revealed' WHERE id = ?").bind(row.id).run();
+      }
       const updated = await findClass(row.code);
       return Response.json(await teacherDashboard(updated!));
     }
