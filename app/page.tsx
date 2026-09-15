@@ -264,15 +264,20 @@ export default function Home() {
 
       {screen === "teacher-access" && <section className="panel teacher-panel">
         <button className="back-button" onClick={goHome}>← 처음 화면</button>
-        <div className="panel-heading"><span>🔒</span><div><p>선생님 전용</p><h2>기존 반 열기</h2></div></div>
-        <p className="panel-guide">교사용 설정은 반 코드와 비밀번호를 모두 알아야 볼 수 있어요.</p>
+        <div className="panel-heading"><span>🔒</span><div><p>선생님 전용</p><h2>교사용 입장</h2></div></div>
+        <div className="first-class-help">
+          <span aria-hidden="true">💡</span>
+          <div><strong>처음 만드는 반인가요?</strong><p>반 코드는 직접 적지 않아요. 아래의 <b>새 반 만들기</b>를 누르면 자동으로 만들어집니다.</p></div>
+        </div>
+        <p className="existing-class-title">이미 만든 반 다시 열기</p>
+        <p className="panel-guide">반을 만들 때 자동 생성된 코드와 교사용 비밀번호를 입력해 주세요.</p>
         <form onSubmit={handleTeacherOpen} className="form-stack">
-          <label>반 코드<input value={teacherCode} onChange={(e) => setTeacherCode(normalizeCode(e.target.value))} placeholder="예: A7K9P2" maxLength={6} required /></label>
+          <label>자동 생성된 반 코드<input value={teacherCode} onChange={(e) => setTeacherCode(normalizeCode(e.target.value))} placeholder="예: A7K9P2" maxLength={6} required /></label>
           <label>교사용 비밀번호<input value={teacherPin} onChange={(e) => setTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="숫자 4자리" type="password" inputMode="numeric" maxLength={4} required /></label>
           <button className="button primary" disabled={busy}>{busy ? "확인 중…" : "🔓 기존 반 열기"}</button>
         </form>
         <div className="divider"><span>또는</span></div>
-        <button className="button soft" onClick={() => { setTeacherPin(""); setCustomMissions({}); setScreen("teacher-create"); showMessage(""); }}>✨ 새 반 만들기</button>
+        <button className="button soft new-class-button" onClick={() => { setTeacherPin(""); setCustomMissions({}); setScreen("teacher-create"); showMessage(""); }}>✨ 처음이라면 새 반 만들기</button>
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
       </section>}
 

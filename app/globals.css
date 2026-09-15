@@ -112,6 +112,15 @@ textarea { resize: vertical; line-height: 1.6; }
 .message.error { color: var(--danger); }
 .divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; color: var(--muted); font-size: .82rem; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.first-class-help {
+  display: flex; gap: 12px; align-items: flex-start; margin-bottom: 22px; padding: 16px;
+  border: 1px solid #e6d8a8; border-radius: 16px; background: #fff9df;
+}
+.first-class-help > span { flex: 0 0 auto; font-size: 1.2rem; }
+.first-class-help strong { display: block; margin-bottom: 4px; font-size: .95rem; }
+.first-class-help p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.6; }
+.existing-class-title { margin: 0 0 5px; color: var(--blue-dark); font-size: 1rem; font-weight: 900; }
+.new-class-button { border: 2px solid #efd8ba; }
 
 .mission-editor { padding: 20px; border: 1px dashed #c8c2df; border-radius: 18px; background: #fbfaff; }
 .mission-editor h3 { margin-bottom: 6px; font-size: 1rem; }
