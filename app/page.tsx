@@ -60,6 +60,7 @@ export default function Home() {
   const [studentCode, setStudentCode] = useState("");
   const [studentNumber, setStudentNumber] = useState("");
   const [studentResult, setStudentResult] = useState<StudentResult | null>(null);
+  const [resultRevealed, setResultRevealed] = useState(false);
   const [letter, setLetter] = useState("");
   const [strengths, setStrengths] = useState(["", ""]);
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
@@ -69,11 +70,11 @@ export default function Home() {
   function showMessage(text: string, isError = false) { setMessage(text); setError(isError); }
   function goHome() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setScreen("roles"); setDashboard(null); setStudentResult(null); setTeacherPin("");
+    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin("");
     setMessage(""); setError(false); setBusy(false);
   }
   function openStudent(code = studentCode) {
-    setStudentCode(code); setStudentResult(null); setMessage(""); setScreen("student");
+    setStudentCode(code); setStudentResult(null); setResultRevealed(false); setMessage(""); setScreen("student");
   }
 
   async function refreshDashboard(silent = false) {
@@ -147,12 +148,12 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<StudentResult>({ action: "studentCheck", code, studentNumber: number });
-      setStudentCode(code); setStudentNumber(String(number)); setStudentResult(data); setExtraMissionVisible(false);
+      setStudentCode(code); setStudentNumber(String(number)); setStudentResult(data); setResultRevealed(false); setExtraMissionVisible(false);
       if (data.mode === "active") {
         setLetter(data.reflection.letter || "");
         setStrengths([data.reflection.strengths[0] || "", data.reflection.strengths[1] || ""]);
-        setSaveState(""); showMessage("마니또와 비밀 미션을 확인했어요.");
-      } else showMessage("나에게 도착한 편지와 장점을 확인해 보세요.");
+        setSaveState(""); showMessage("비밀 결과가 준비됐어요. 혼자 확인하기를 눌러 주세요.");
+      } else showMessage("편지와 장점이 도착했어요. 혼자 확인해 보세요.");
       setScreen("student"); return data;
     } catch (checkError) { showMessage((checkError as Error).message, true); throw checkError; }
     finally { setBusy(false); }
@@ -337,7 +338,13 @@ export default function Home() {
             <label>번호<input value={studentNumber} onChange={(e) => setStudentNumber(e.target.value.replace(/\D/g, "").slice(0, 2))} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} enterKeyHint="done" placeholder="예: 12" required /></label>
             <button className="button secondary" disabled={busy}>{busy ? "확인 중…" : "🔍 확인"}</button>
           </form></>}
-        {activeResult && <div className="student-result">
+        {studentResult && !resultRevealed && <div className="privacy-cover">
+          <div className="privacy-icon" aria-hidden="true">🙈</div>
+          <h3>비밀 화면이 준비됐어요</h3>
+          <p>{studentResult.mode === "active" ? "주변 친구가 보지 않도록 휴대폰을 가까이 들고 확인해 주세요." : "받은 편지와 장점은 나만 조용히 확인해요."}</p>
+          <button className="button privacy-open" onClick={() => setResultRevealed(true)}>🔐 혼자 확인하기</button>
+        </div>}
+        {activeResult && resultRevealed && <div className="student-result">
           <p className="result-label">나의 마니또는</p><p className="result-number"><strong>{activeResult.targetNumber}</strong>번 친구!</p>
           <p className="result-guide">{activeResult.className}의 {activeResult.targetNumber}번 친구를 따뜻하게 지켜봐 주세요. 다른 친구에게는 비밀!</p>
           <div className="mission-box"><p>{activeResult.customMission ? "선생님이 전한 비밀 미션" : "오늘의 마니또 미션"}</p><strong>{chosenMission}</strong></div>
@@ -345,13 +352,15 @@ export default function Home() {
           <label className="reflection">💌 마니또에게 남길 비밀 편지 <small>(선택)</small><textarea value={letter} onChange={(e) => { const next = e.target.value.slice(0, 200); setLetter(next); scheduleSave(next, strengths); }} rows={4} maxLength={200} placeholder="친구에게 전하고 싶은 따뜻한 말을 적어 보세요." /><span>{letter.length} / 200자</span></label>
           <fieldset className="strengths"><legend>🌟 마니또의 장점 2가지 <small>(선택)</small></legend><label>첫 번째 장점<input value={strengths[0]} onChange={(e) => { const next = [e.target.value.slice(0, 50), strengths[1]]; setStrengths(next); scheduleSave(letter, next); }} maxLength={50} placeholder="예: 친구의 말을 잘 들어줘요" /></label><label>두 번째 장점<input value={strengths[1]} onChange={(e) => { const next = [strengths[0], e.target.value.slice(0, 50)]; setStrengths(next); scheduleSave(letter, next); }} maxLength={50} placeholder="예: 항상 밝게 인사해요" /></label></fieldset>
           <p className="save-state" aria-live="polite">{saveState}</p>
-          <button className="button quiet" onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); void saveReflection(); setStudentResult(null); setMessage(""); }}>확인했어요</button>
+          <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
+          <button className="button quiet" onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); void saveReflection(); setStudentResult(null); setResultRevealed(false); setMessage(""); }}>확인했어요</button>
         </div>}
-        {studentResult?.mode === "ended" && <div className="student-result end-reveal">
+        {studentResult?.mode === "ended" && resultRevealed && <div className="student-result end-reveal">
           <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">누가 쓴 편지인지는 공개되지 않아요.</p>
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
-          <button className="button quiet" onClick={() => { setStudentResult(null); setMessage(""); }}>확인했어요</button>
+          <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
+          <button className="button quiet" onClick={() => { setStudentResult(null); setResultRevealed(false); setMessage(""); }}>확인했어요</button>
         </div>}
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
       </section>}

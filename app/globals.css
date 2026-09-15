@@ -164,6 +164,12 @@ textarea { resize: vertical; line-height: 1.6; }
 
 .student-result { text-align: center; }
 .student-result, .mission-box, .received { overflow-wrap: anywhere; }
+.privacy-cover { padding: 24px 8px 8px; text-align: center; }
+.privacy-icon { display: grid; width: 78px; height: 78px; margin: 0 auto 17px; place-items: center; font-size: 2.25rem; border: 2px solid #d7d0f2; border-radius: 26px; background: var(--lavender); box-shadow: 0 9px 22px rgba(91,88,126,.12); }
+.privacy-cover h3 { margin-bottom: 9px; font-size: 1.4rem; }
+.privacy-cover p { margin: 0 auto 20px; max-width: 390px; color: var(--muted); line-height: 1.7; }
+.privacy-open { color: #315f52; background: var(--mint); }
+.privacy-hide { margin: 16px 0 2px; padding: 9px 12px; color: var(--muted); font-weight: 800; border: 0; border-radius: 11px; background: #f5f3fb; }
 .result-label { margin-bottom: 6px; color: var(--muted); font-weight: 800; }
 .result-number { margin-bottom: 12px; font-size: 1.5rem; font-weight: 900; }
 .result-number strong { color: var(--blue-dark); font-size: 3.2rem; }
@@ -207,6 +213,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px
   input, textarea { padding: 14px; font-size: 16px; }
   .button { min-height: 54px; }
   .student-panel .form-stack .secondary { margin-top: 2px; }
+  .privacy-cover { padding-top: 18px; }
+  .privacy-icon { width: 72px; height: 72px; }
+  .privacy-open { min-height: 58px; }
   .role-buttons, .dashboard-actions, .mission-fields, .writing-status { grid-template-columns: 1fr; }
   .role-button { min-height: 104px; }
   .class-code-card { grid-template-columns: 1fr; text-align: center; }
