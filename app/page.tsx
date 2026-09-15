@@ -311,7 +311,10 @@ export default function Home() {
             <article><div><span aria-hidden="true">🌟</span><strong>장점 2가지 작성</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p>{dashboard.strengthNumbers.length ? [...dashboard.strengthNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ") : "아직 모두 작성한 학생이 없어요."}</p></article>
           </div>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
-            <div className="end-summary"><h3>🎉 최종 배정표</h3><p>학생에게는 자신을 지켜본 친구의 번호가 공개되지 않아요.</p>
+            <div className="end-summary">
+              <div className="print-heading"><h1>우리 반 마니또 최종 배정표</h1><p>{dashboard.className} · 반 코드 {dashboard.code}</p></div>
+              <div className="end-summary-heading"><h3>🎉 최종 배정표</h3><button className="button print-button" onClick={() => window.print()}>🖨️ 인쇄·PDF 저장</button></div>
+              <p>학생에게는 자신을 지켜본 친구의 번호가 공개되지 않아요.</p>
               <div className="assignment-list">{dashboard.finalRows?.map((row) => <article key={row.studentNumber} className="assignment-row"><div><span>{row.studentNumber}번</span><b>→ {row.targetNumber}번 친구</b></div><p><strong>비밀 편지</strong>{row.letter || "작성하지 않았어요."}</p><p><strong>장점</strong>{row.strengths.length ? row.strengths.join(" · ") : "작성하지 않았어요."}</p></article>)}</div>
             </div>}
         </section>
