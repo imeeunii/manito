@@ -150,10 +150,6 @@ textarea { resize: vertical; line-height: 1.6; }
 .dashboard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .end-summary { margin-top: 18px; padding-top: 19px; border-top: 1px solid var(--line); }
 .end-summary > p { color: var(--muted); font-size: .88rem; }
-.reveal-control { margin: 0 0 18px; padding: 16px; border: 1px solid #e3d9a9; border-radius: 16px; background: #fff9df; }
-.reveal-control p { margin: 0 0 10px; color: #746540; font-size: .86rem; line-height: 1.55; }
-.reveal-button { color: #675219; background: #ffe89a; }
-.revealed-badge { margin: 0 0 18px; padding: 12px 16px; color: #36715d; text-align: center; font-weight: 900; border-radius: 14px; background: var(--mint); }
 .assignment-list { display: grid; gap: 11px; max-height: 520px; overflow-y: auto; padding-right: 3px; }
 .assignment-row { padding: 15px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .assignment-row > div { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
@@ -180,10 +176,6 @@ textarea { resize: vertical; line-height: 1.6; }
 .strengths legend { padding: 0 7px; font-weight: 900; }
 .save-state { min-height: 20px; margin: 10px 0 0; color: var(--mint-dark); font-size: .82rem; font-weight: 750; }
 .end-reveal h3 { font-size: 1.55rem; }
-.watcher-reveal { display: grid; gap: 6px; margin: 18px 0; padding: 20px; border: 2px solid #d3c9f6; border-radius: 20px; background: linear-gradient(135deg, var(--lavender), #fff7d9); }
-.watcher-reveal span { color: var(--muted); font-size: .86rem; font-weight: 800; }
-.watcher-reveal strong { color: var(--blue-dark); font-size: 1.65rem; }
-.watcher-reveal span:last-child { color: inherit; font-size: 1.4rem; }
 .received { margin-top: 14px; padding: 18px; text-align: left; border-radius: 17px; background: var(--blush); }
 .received:nth-of-type(2) { background: var(--mint); }
 .received p { margin-bottom: 8px; font-size: .8rem; font-weight: 900; }

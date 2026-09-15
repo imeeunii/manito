@@ -6,15 +6,14 @@ type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard
 type FinalRow = { studentNumber: number; targetNumber: number; letter: string; strengths: string[] };
 type TeacherDashboard = {
   code: string; className: string; studentCount: number; excludedNumbers: number[];
-  participantCount: number; viewedNumbers: number[]; status: "active" | "ended" | "revealed"; finalRows?: FinalRow[];
+  participantCount: number; viewedNumbers: number[]; status: "active" | "ended"; finalRows?: FinalRow[];
 };
 type ActiveStudentResult = {
   mode: "active"; className: string; targetNumber: number; customMission: string;
   reflection: { letter: string; strengths: string[] };
 };
 type EndedStudentResult = {
-  mode: "ended"; className: string; watcherNumber: number | null;
-  received: { letter: string; strengths: string[] };
+  mode: "ended"; className: string; received: { letter: string; strengths: string[] };
 };
 type StudentResult = ActiveStudentResult | EndedStudentResult;
 
@@ -145,7 +144,7 @@ export default function Home() {
         setLetter(data.reflection.letter || "");
         setStrengths([data.reflection.strengths[0] || "", data.reflection.strengths[1] || ""]);
         setSaveState(""); showMessage("마니또와 비밀 미션을 확인했어요.");
-      } else showMessage(data.watcherNumber ? "나를 지켜본 마니또와 도착한 내용을 확인해 보세요." : "나에게 도착한 편지와 장점을 확인해 보세요.");
+      } else showMessage("나에게 도착한 편지와 장점을 확인해 보세요.");
       setScreen("student"); return data;
     } catch (checkError) { showMessage((checkError as Error).message, true); throw checkError; }
     finally { setBusy(false); }
@@ -172,15 +171,6 @@ export default function Home() {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
       setDashboard(data); showMessage("활동을 종료했어요. 교사용 최종 배정표가 열렸습니다.");
     } catch (endError) { showMessage((endError as Error).message, true); }
-    finally { setBusy(false); }
-  }
-  async function handleRevealManitto() {
-    if (!dashboard || !window.confirm("학생들에게 마니또의 정체를 공개할까요? 공개하면 다시 숨길 수 없어요.")) return;
-    setBusy(true);
-    try {
-      const data = await callApi<TeacherDashboard>({ action: "revealManitto", code: teacherCode, pin: teacherPin });
-      setDashboard(data); showMessage("마니또의 정체를 공개했어요. 학생이 다시 확인하면 번호가 보여요.");
-    } catch (revealError) { showMessage((revealError as Error).message, true); }
     finally { setBusy(false); }
   }
   async function handleDeleteClass() {
@@ -316,8 +306,7 @@ export default function Home() {
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
           <p>{dashboard.viewedNumbers.length ? `확인 완료: ${[...dashboard.viewedNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ")}` : "아직 확인한 학생이 없어요."}</p>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
-            <div className="end-summary"><h3>🎉 최종 배정표</h3><p>{dashboard.status === "revealed" ? "학생들에게 자신을 지켜본 친구의 번호가 공개된 상태예요." : "학생에게는 자신을 지켜본 친구의 번호가 아직 공개되지 않아요."}</p>
-              {dashboard.status === "ended" ? <div className="reveal-control"><p>수업에서 공개할 준비가 되었을 때 눌러 주세요.</p><button className="button reveal-button" onClick={handleRevealManitto} disabled={busy}>{busy ? "공개 중…" : "🎊 마니또 정체 공개하기"}</button></div> : <div className="revealed-badge">🎉 마니또 정체 공개 완료</div>}
+            <div className="end-summary"><h3>🎉 최종 배정표</h3><p>학생에게는 자신을 지켜본 친구의 번호가 공개되지 않아요.</p>
               <div className="assignment-list">{dashboard.finalRows?.map((row) => <article key={row.studentNumber} className="assignment-row"><div><span>{row.studentNumber}번</span><b>→ {row.targetNumber}번 친구</b></div><p><strong>비밀 편지</strong>{row.letter || "작성하지 않았어요."}</p><p><strong>장점</strong>{row.strengths.length ? row.strengths.join(" · ") : "작성하지 않았어요."}</p></article>)}</div>
             </div>}
         </section>
@@ -345,8 +334,7 @@ export default function Home() {
           <button className="button quiet" onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); void saveReflection(); setStudentResult(null); setMessage(""); }}>확인했어요</button>
         </div>}
         {studentResult?.mode === "ended" && <div className="student-result end-reveal">
-          <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">{studentResult.watcherNumber ? "선생님이 마니또의 정체를 공개했어요!" : "누가 쓴 편지인지는 선생님이 나중에 공개해요."}</p>
-          {studentResult.watcherNumber && <div className="watcher-reveal"><span>나를 지켜본 마니또는</span><strong>{studentResult.watcherNumber}번 친구!</strong><span aria-hidden="true">🎊</span></div>}
+          <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">누가 쓴 편지인지는 나중에 공개돼요.</p>
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
           <button className="button quiet" onClick={() => { setStudentResult(null); setMessage(""); }}>확인했어요</button>
