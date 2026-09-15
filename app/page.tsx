@@ -6,7 +6,8 @@ type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard
 type FinalRow = { studentNumber: number; targetNumber: number; letter: string; strengths: string[] };
 type TeacherDashboard = {
   code: string; className: string; studentCount: number; excludedNumbers: number[];
-  participantCount: number; viewedNumbers: number[]; status: "active" | "ended"; finalRows?: FinalRow[];
+  participantCount: number; viewedNumbers: number[]; letterNumbers: number[]; strengthNumbers: number[];
+  status: "active" | "ended"; finalRows?: FinalRow[];
 };
 type ActiveStudentResult = {
   mode: "active"; className: string; targetNumber: number; customMission: string;
@@ -305,6 +306,10 @@ export default function Home() {
           <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
           <p>{dashboard.viewedNumbers.length ? `확인 완료: ${[...dashboard.viewedNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ")}` : "아직 확인한 학생이 없어요."}</p>
+          <div className="writing-status" aria-label="편지와 장점 작성 현황">
+            <article><div><span aria-hidden="true">💌</span><strong>비밀 편지 작성</strong><b>{dashboard.letterNumbers.length} / {dashboard.participantCount}명</b></div><p>{dashboard.letterNumbers.length ? [...dashboard.letterNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ") : "아직 작성한 학생이 없어요."}</p></article>
+            <article><div><span aria-hidden="true">🌟</span><strong>장점 2가지 작성</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p>{dashboard.strengthNumbers.length ? [...dashboard.strengthNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ") : "아직 모두 작성한 학생이 없어요."}</p></article>
+          </div>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary"><h3>🎉 최종 배정표</h3><p>학생에게는 자신을 지켜본 친구의 번호가 공개되지 않아요.</p>
               <div className="assignment-list">{dashboard.finalRows?.map((row) => <article key={row.studentNumber} className="assignment-row"><div><span>{row.studentNumber}번</span><b>→ {row.targetNumber}번 친구</b></div><p><strong>비밀 편지</strong>{row.letter || "작성하지 않았어요."}</p><p><strong>장점</strong>{row.strengths.length ? row.strengths.join(" · ") : "작성하지 않았어요."}</p></article>)}</div>

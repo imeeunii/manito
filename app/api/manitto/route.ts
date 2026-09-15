@@ -116,6 +116,12 @@ async function teacherDashboard(row: ClassRow) {
   const viewedNumbers = entries.results
     .filter((entry) => entry.viewed_at)
     .map((entry) => entry.student_number);
+  const letterNumbers = entries.results
+    .filter((entry) => entry.letter.trim())
+    .map((entry) => entry.student_number);
+  const strengthNumbers = entries.results
+    .filter((entry) => entry.strength_one.trim() && entry.strength_two.trim())
+    .map((entry) => entry.student_number);
   const dashboard: Record<string, unknown> = {
     code: row.code,
     className: row.name,
@@ -123,6 +129,8 @@ async function teacherDashboard(row: ClassRow) {
     excludedNumbers: parseJson<number[]>(row.excluded_numbers, []),
     participantCount: participantNumbers.length,
     viewedNumbers,
+    letterNumbers,
+    strengthNumbers,
     status: row.status,
   };
 
