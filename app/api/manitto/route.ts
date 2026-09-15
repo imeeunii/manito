@@ -134,22 +134,6 @@ async function teacherDashboard(row: ClassRow) {
     status: row.status,
   };
 
-  if (row.status === "ended") {
-    const assignments = parseJson<Record<string, number>>(row.assignments, {});
-    const entriesByStudent = new Map(
-      entries.results.map((entry) => [entry.student_number, entry])
-    );
-    dashboard.finalRows = participantNumbers.map((studentNumber) => {
-      const entry = entriesByStudent.get(studentNumber);
-      return {
-        studentNumber,
-        targetNumber: assignments[String(studentNumber)],
-        letter: entry?.letter ?? "",
-        strengths: [entry?.strength_one ?? "", entry?.strength_two ?? ""].filter(Boolean),
-      };
-    });
-  }
-
   return dashboard;
 }
 

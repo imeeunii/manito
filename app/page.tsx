@@ -3,11 +3,10 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard" | "student";
-type FinalRow = { studentNumber: number; targetNumber: number; letter: string; strengths: string[] };
 type TeacherDashboard = {
   code: string; className: string; studentCount: number; excludedNumbers: number[];
   participantCount: number; viewedNumbers: number[]; letterNumbers: number[]; strengthNumbers: number[];
-  status: "active" | "ended"; finalRows?: FinalRow[];
+  status: "active" | "ended";
 };
 type ActiveStudentResult = {
   mode: "active"; className: string; targetNumber: number; customMission: string;
@@ -170,7 +169,7 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
-      setDashboard(data); showMessage("활동을 종료했어요. 교사용 최종 배정표가 열렸습니다.");
+      setDashboard(data); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
     } catch (endError) { showMessage((endError as Error).message, true); }
     finally { setBusy(false); }
   }
@@ -312,10 +311,9 @@ export default function Home() {
           </div>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary">
-              <div className="print-heading"><h1>우리 반 마니또 최종 배정표</h1><p>{dashboard.className} · 반 코드 {dashboard.code}</p></div>
-              <div className="end-summary-heading"><h3>🎉 최종 배정표</h3><button className="button print-button" onClick={() => window.print()}>🖨️ 인쇄·PDF 저장</button></div>
-              <p>학생에게는 자신을 지켜본 친구의 번호가 공개되지 않아요.</p>
-              <div className="assignment-list">{dashboard.finalRows?.map((row) => <article key={row.studentNumber} className="assignment-row"><div><span>{row.studentNumber}번</span><b>→ {row.targetNumber}번 친구</b></div><p><strong>비밀 편지</strong>{row.letter || "작성하지 않았어요."}</p><p><strong>장점</strong>{row.strengths.length ? row.strengths.join(" · ") : "작성하지 않았어요."}</p></article>)}</div>
+              <h3>🌷 활동이 종료되었어요</h3>
+              <p>학생은 학생용 화면에서 자신에게 도착한 편지와 장점을 확인할 수 있어요.</p>
+              <div className="end-note">💌 누가 나를 지켜본 마니또인지는 공개되지 않아요.</div>
             </div>}
         </section>
         <div className="dashboard-bottom"><button className="button student-shortcut" onClick={() => openStudent(dashboard.code)}>🐣 이 반의 학생용 화면 보기</button><button className="text-button" onClick={handleDeleteClass}>이 반 기록 삭제</button></div>
