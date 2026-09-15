@@ -194,6 +194,28 @@ export default function Home() {
     try { await navigator.clipboard.writeText(dashboard.code); showMessage("반 코드를 복사했어요."); }
     catch { showMessage(`반 코드는 ${dashboard.code}입니다.`); }
   }
+  async function shareStudentSite() {
+    if (!dashboard) return;
+    const siteUrl = window.location.origin;
+    const shareText = `${dashboard.className} 우리 반 마니또\n반 코드: ${dashboard.code}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "우리 반 마니또", text: shareText, url: siteUrl });
+        showMessage("학생용 사이트를 공유했어요.");
+        return;
+      }
+      await navigator.clipboard.writeText(`${shareText}\n${siteUrl}`);
+      showMessage("학생용 사이트 주소와 반 코드를 복사했어요.");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(`${shareText}\n${siteUrl}`);
+        showMessage("학생용 사이트 주소와 반 코드를 복사했어요.");
+      } catch {
+        showMessage(`사이트 주소: ${siteUrl} · 반 코드: ${dashboard.code}`);
+      }
+    }
+  }
   useEffect(() => {
     const context = (document as Document & { modelContext?: {
       registerTool: (tool: Record<string, unknown>, options?: { signal?: AbortSignal }) => void | Promise<void>;
@@ -308,8 +330,8 @@ export default function Home() {
       {screen === "teacher-dashboard" && dashboard && <section className="panel teacher-panel wide-panel">
         <button className="back-button" onClick={goHome}>🔒 잠그고 처음 화면</button>
         <div className="panel-heading"><span>📝</span><div><p>선생님 전용</p><h2>{dashboard.className}</h2></div></div>
-        <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button></div>
-        <p className="share-guide">학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
+        <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><div className="class-code-actions"><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button><button className="button site-share" onClick={shareStudentSite}>📤 학생용 사이트 공유</button></div></div>
+        <p className="share-guide">공유한 사이트를 연 뒤 학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 직접 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
         <section className="status-card">
           <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
