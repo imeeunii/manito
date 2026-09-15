@@ -76,17 +76,6 @@ export default function Home() {
     setStudentCode(code); setStudentResult(null); setMessage(""); setScreen("student");
   }
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sharedCode = normalizeCode(params.get("class") || "");
-    const savedCode = localStorage.getItem("manitto-last-class-code") || "";
-    setStudentCode(sharedCode || savedCode);
-    if (params.get("mode") === "student" && sharedCode.length === 6) {
-      localStorage.setItem("manitto-last-class-code", sharedCode);
-      setScreen("student");
-    }
-  }, []);
-
   async function refreshDashboard(silent = false) {
     if (!teacherCode || !teacherPin) return;
     try {
@@ -151,7 +140,6 @@ export default function Home() {
     try {
       const data = await callApi<StudentResult>({ action: "studentCheck", code, studentNumber: number });
       setStudentCode(code); setStudentNumber(String(number)); setStudentResult(data); setExtraMissionVisible(false);
-      localStorage.setItem("manitto-last-class-code", code);
       if (data.mode === "active") {
         setLetter(data.reflection.letter || "");
         setStrengths([data.reflection.strengths[0] || "", data.reflection.strengths[1] || ""]);
@@ -197,13 +185,6 @@ export default function Home() {
     try { await navigator.clipboard.writeText(dashboard.code); showMessage("반 코드를 복사했어요."); }
     catch { showMessage(`반 코드는 ${dashboard.code}입니다.`); }
   }
-  async function copyStudentLink() {
-    if (!dashboard) return;
-    const link = `${window.location.origin}${window.location.pathname}?mode=student&class=${dashboard.code}`;
-    try { await navigator.clipboard.writeText(link); showMessage("학생용 링크를 복사했어요. 학생들에게 보내 주세요."); }
-    catch { showMessage("링크 복사가 되지 않았어요. 반 코드 복사 버튼을 이용해 주세요.", true); }
-  }
-
   useEffect(() => {
     const context = (document as Document & { modelContext?: {
       registerTool: (tool: Record<string, unknown>, options?: { signal?: AbortSignal }) => void | Promise<void>;
@@ -318,7 +299,7 @@ export default function Home() {
       {screen === "teacher-dashboard" && dashboard && <section className="panel teacher-panel wide-panel">
         <button className="back-button" onClick={goHome}>🔒 잠그고 처음 화면</button>
         <div className="panel-heading"><span>📝</span><div><p>선생님 전용</p><h2>{dashboard.className}</h2></div></div>
-        <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><div className="class-code-actions"><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button><button className="button link-copy" onClick={copyStudentLink}>🔗 학생용 링크 복사</button></div></div>
+        <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button></div>
         <p className="share-guide">학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
         <section className="status-card">
           <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
