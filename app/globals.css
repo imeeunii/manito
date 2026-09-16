@@ -148,16 +148,19 @@ textarea { resize: vertical; line-height: 1.6; }
 .status-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-heading h3 { margin: 0; font-size: 1.05rem; }
 .status-heading > strong { color: var(--blue-dark); }
-.auto-refresh { display: flex; align-items: center; gap: 6px; margin: 5px 0 0; color: var(--muted); font-size: .78rem; font-weight: 750; }
-.auto-refresh span { width: 8px; height: 8px; border-radius: 50%; background: #72b99f; box-shadow: 0 0 0 3px #dff3ea; }
 .progress { height: 12px; margin: 14px 0; overflow: hidden; border-radius: 999px; background: #e4e7f1; }
 .progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8d9bd7, #72b99f); transition: width .3s ease; }
-.status-card > p { margin-bottom: 18px; color: var(--muted); font-size: .88rem; line-height: 1.6; }
+.completion-lines { display: grid; gap: 6px; margin-bottom: 18px; }
+.completion-lines p, .writing-status article > p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+.completion-lines b, .writing-status article > p b { display: inline-block; min-width: 82px; margin-right: 7px; color: #536f65; }
+.completion-lines .pending, .writing-status article > p.pending { color: #8a6570; }
+.completion-lines .pending b, .writing-status article > p.pending b { color: #9a596c; }
 .writing-status { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 18px; }
 .writing-status article { padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .writing-status article > div { display: grid; grid-template-columns: auto 1fr; gap: 4px 7px; align-items: center; }
 .writing-status article b { grid-column: 2; color: var(--blue-dark); font-size: .9rem; }
-.writing-status article p { margin: 10px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+.writing-status article > p:first-of-type { margin-top: 10px; }
+.writing-status article > p + p { margin-top: 5px; }
 .dashboard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .end-summary { margin-top: 18px; padding-top: 19px; border-top: 1px solid var(--line); }
 .end-summary h3 { margin-bottom: 8px; }

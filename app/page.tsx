@@ -65,17 +65,12 @@ export default function Home() {
   const [strengths, setStrengths] = useState(["", ""]);
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
   const [saveState, setSaveState] = useState("");
-  const [lastUpdated, setLastUpdated] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function markDashboardUpdated() {
-    setLastUpdated(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-  }
 
   function showMessage(text: string, isError = false) { setMessage(text); setError(isError); }
   function goHome() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin(""); setLastUpdated("");
+    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin("");
     setMessage(""); setError(false); setBusy(false);
   }
   function openStudent(code = studentCode) {
@@ -86,18 +81,10 @@ export default function Home() {
     if (!teacherCode || !teacherPin) return;
     try {
       const data = await callApi<TeacherDashboard>({ action: "teacherOpen", code: teacherCode, pin: teacherPin });
-      setDashboard(data); markDashboardUpdated();
+      setDashboard(data);
       if (!silent) showMessage("최신 확인 현황으로 새로고침했어요.");
     } catch (refreshError) { if (!silent) showMessage((refreshError as Error).message, true); }
   }
-
-  useEffect(() => {
-    if (screen !== "teacher-dashboard" || !dashboard || dashboard.status !== "active") return;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refreshDashboard(true);
-    }, 15000);
-    return () => window.clearInterval(interval);
-  }, [screen, dashboard?.status, teacherCode, teacherPin]);
 
   async function handleTeacherOpen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,7 +92,7 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "teacherOpen", code: teacherCode, pin: teacherPin });
-      setDashboard(data); setTeacherCode(data.code); setScreen("teacher-dashboard"); markDashboardUpdated();
+      setDashboard(data); setTeacherCode(data.code); setScreen("teacher-dashboard");
       showMessage(`${data.className} 교사용 화면을 열었어요.`);
     } catch (openError) { showMessage((openError as Error).message, true); }
     finally { setBusy(false); }
@@ -135,7 +122,7 @@ export default function Home() {
         action: "createClass", className: form.get("className"), studentCount: Number(form.get("studentCount")),
         excludedNumbers, pin, customMissions,
       });
-      setTeacherPin(pin); setTeacherCode(data.code); setDashboard(data); setScreen("teacher-dashboard"); markDashboardUpdated();
+      setTeacherPin(pin); setTeacherCode(data.code); setDashboard(data); setScreen("teacher-dashboard");
       showMessage("온라인 반을 만들었어요. 아래 반 코드를 학생들에게 알려 주세요.");
     } catch (createError) { showMessage((createError as Error).message, true); }
     finally { setBusy(false); }
@@ -185,7 +172,7 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
-      setDashboard(data); markDashboardUpdated(); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
+      setDashboard(data); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
     } catch (endError) { showMessage((endError as Error).message, true); }
     finally { setBusy(false); }
   }
@@ -274,6 +261,11 @@ export default function Home() {
   const chosenMission = activeResult ? activeResult.customMission || DEFAULT_MISSIONS[(Number(studentNumber) * 3 + activeResult.targetNumber) % DEFAULT_MISSIONS.length] : "";
   const extraMission = activeResult ? DEFAULT_MISSIONS[(Number(studentNumber) * 5 + activeResult.targetNumber + 7) % DEFAULT_MISSIONS.length] : "";
   const progress = dashboard ? Math.round((dashboard.viewedNumbers.length / dashboard.participantCount) * 100) : 0;
+  const participantNumbers = dashboard ? Array.from({ length: dashboard.studentCount }, (_, index) => index + 1).filter((number) => !dashboard.excludedNumbers.includes(number)) : [];
+  const pendingViewed = dashboard ? participantNumbers.filter((number) => !dashboard.viewedNumbers.includes(number)) : [];
+  const pendingLetters = dashboard ? participantNumbers.filter((number) => !dashboard.letterNumbers.includes(number)) : [];
+  const pendingStrengths = dashboard ? participantNumbers.filter((number) => !dashboard.strengthNumbers.includes(number)) : [];
+  const numberList = (numbers: number[]) => numbers.length ? numbers.map((number) => `${number}번`).join(", ") : "없음";
 
   return (
     <main className="page-shell">
@@ -340,12 +332,12 @@ export default function Home() {
         <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><div className="class-code-actions"><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button><button className="button site-share" onClick={shareStudentSite}>📤 학생용 사이트 공유</button></div></div>
         <p className="share-guide">공유한 사이트를 연 뒤 학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 직접 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
         <section className="status-card">
-          <div className="status-heading"><div><h3>학생 확인 현황</h3>{dashboard.status === "active" && <p className="auto-refresh"><span aria-hidden="true" />15초마다 자동 갱신{lastUpdated && ` · ${lastUpdated}`}</p>}</div><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
+          <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
-          <p>{dashboard.viewedNumbers.length ? `확인 완료: ${[...dashboard.viewedNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ")}` : "아직 확인한 학생이 없어요."}</p>
+          <div className="completion-lines"><p><b>확인 완료</b>{numberList([...dashboard.viewedNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 확인 전</b>{numberList(pendingViewed)}</p></div>
           <div className="writing-status" aria-label="편지와 장점 작성 현황">
-            <article><div><span aria-hidden="true">💌</span><strong>비밀 편지 작성</strong><b>{dashboard.letterNumbers.length} / {dashboard.participantCount}명</b></div><p>{dashboard.letterNumbers.length ? [...dashboard.letterNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ") : "아직 작성한 학생이 없어요."}</p></article>
-            <article><div><span aria-hidden="true">🌟</span><strong>장점 2가지 작성</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p>{dashboard.strengthNumbers.length ? [...dashboard.strengthNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ") : "아직 모두 작성한 학생이 없어요."}</p></article>
+            <article><div><span aria-hidden="true">💌</span><strong>비밀 편지 작성</strong><b>{dashboard.letterNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList([...dashboard.letterNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingLetters)}</p></article>
+            <article><div><span aria-hidden="true">🌟</span><strong>장점 2가지 작성</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList([...dashboard.strengthNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingStrengths)}</p></article>
           </div>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary">
