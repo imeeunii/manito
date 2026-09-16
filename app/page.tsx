@@ -225,6 +225,28 @@ export default function Home() {
       }
     }
   }
+  async function shareEndNotice() {
+    if (!dashboard) return;
+    const siteUrl = window.location.origin;
+    const notice = `${dashboard.className} 마니또 활동이 끝났어요!\n반 코드: ${dashboard.code}\n학생용 → 반 코드 → 번호 순서로 들어가 친구가 남긴 마음을 확인하세요.`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "우리 반 마니또 활동 종료", text: notice, url: siteUrl });
+        showMessage("활동 종료 안내를 공유했어요.");
+        return;
+      }
+      await navigator.clipboard.writeText(`${notice}\n${siteUrl}`);
+      showMessage("활동 종료 안내문을 복사했어요.");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(`${notice}\n${siteUrl}`);
+        showMessage("활동 종료 안내문을 복사했어요.");
+      } catch {
+        showMessage(`사이트 주소: ${siteUrl} · 반 코드: ${dashboard.code}`);
+      }
+    }
+  }
   useEffect(() => {
     const context = (document as Document & { modelContext?: {
       registerTool: (tool: Record<string, unknown>, options?: { signal?: AbortSignal }) => void | Promise<void>;
@@ -362,6 +384,7 @@ export default function Home() {
               <h3>🌷 활동이 종료되었어요</h3>
               <p>학생은 학생용 화면에서 자신에게 도착한 편지 또는 장점을 확인할 수 있어요.</p>
               <div className="end-note">💌 누가 나를 지켜본 마니또인지는 공개되지 않아요.</div>
+              <button className="button end-share" onClick={shareEndNotice}>📣 학생에게 종료 안내 공유</button>
             </div>}
         </section>
         <div className="dashboard-bottom"><button className="button student-shortcut" onClick={() => openStudent(dashboard.code)}>🐣 이 반의 학생용 화면 보기</button><button className="text-button" onClick={handleDeleteClass}>이 반 기록 삭제</button></div>
