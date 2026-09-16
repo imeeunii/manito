@@ -270,10 +270,20 @@ async function saveReflection(payload: Record<string, unknown>) {
   if (!Number.isInteger(studentNumber) || !participantsFor(row).includes(studentNumber)) {
     throw new Response("참여하는 번호를 정확히 입력해 주세요.", { status: 400 });
   }
-  const letter = cleanText(payload.letter, 200);
+  const reflectionType = String(payload.reflectionType ?? "");
   const strengths = Array.isArray(payload.strengths) ? payload.strengths : [];
-  const strengthOne = cleanText(strengths[0], 50);
-  const strengthTwo = cleanText(strengths[1], 50);
+  const letter = reflectionType === "letter" ? cleanText(payload.letter, 200) : "";
+  const strengthOne = reflectionType === "strengths" ? cleanText(strengths[0], 50) : "";
+  const strengthTwo = reflectionType === "strengths" ? cleanText(strengths[1], 50) : "";
+  if (reflectionType === "letter" && !letter) {
+    throw new Response("비밀 편지를 작성해 주세요.", { status: 400 });
+  }
+  if (reflectionType === "strengths" && (!strengthOne || !strengthTwo)) {
+    throw new Response("마니또의 장점 두 가지를 모두 작성해 주세요.", { status: 400 });
+  }
+  if (reflectionType !== "letter" && reflectionType !== "strengths") {
+    throw new Response("비밀 편지 또는 장점 2가지 중 하나를 선택해 주세요.", { status: 400 });
+  }
   await getDatabase()
     .prepare(
       "INSERT INTO student_entries (class_id, student_number, viewed_at, letter, strength_one, strength_two, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(class_id, student_number) DO UPDATE SET letter = excluded.letter, strength_one = excluded.strength_one, strength_two = excluded.strength_two, updated_at = CURRENT_TIMESTAMP"

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard" | "student";
 type TeacherDashboard = {
@@ -16,6 +16,7 @@ type EndedStudentResult = {
   mode: "ended"; className: string; received: { letter: string; strengths: string[] };
 };
 type StudentResult = ActiveStudentResult | EndedStudentResult;
+type ReflectionChoice = "" | "letter" | "strengths";
 
 const DEFAULT_MISSIONS = [
   "먼저 웃으며 반갑게 인사하기", "친구가 잘한 점을 찾아 한 번 칭찬하기",
@@ -63,13 +64,12 @@ export default function Home() {
   const [resultRevealed, setResultRevealed] = useState(false);
   const [letter, setLetter] = useState("");
   const [strengths, setStrengths] = useState(["", ""]);
+  const [reflectionChoice, setReflectionChoice] = useState<ReflectionChoice>("");
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
   const [saveState, setSaveState] = useState("");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function showMessage(text: string, isError = false) { setMessage(text); setError(isError); }
   function goHome() {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
     setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin("");
     setMessage(""); setError(false); setBusy(false);
   }
@@ -146,33 +146,39 @@ export default function Home() {
       if (data.mode === "active") {
         setLetter(data.reflection.letter || "");
         setStrengths([data.reflection.strengths[0] || "", data.reflection.strengths[1] || ""]);
+        setReflectionChoice(data.reflection.letter ? "letter" : data.reflection.strengths[0] && data.reflection.strengths[1] ? "strengths" : "");
         setSaveState(""); showMessage("비밀 결과가 준비됐어요. 혼자 확인하기를 눌러 주세요.");
-      } else showMessage("편지와 장점이 도착했어요. 혼자 확인해 보세요.");
+      } else showMessage("친구의 마음이 도착했어요. 혼자 확인해 보세요.");
       setScreen("student"); return data;
     } catch (checkError) { showMessage((checkError as Error).message, true); throw checkError; }
     finally { setBusy(false); }
   }
 
-  async function saveReflection(nextLetter = letter, nextStrengths = strengths) {
-    if (!studentResult || studentResult.mode !== "active") return;
+  async function saveReflection() {
+    if (!studentResult || studentResult.mode !== "active" || !reflectionChoice) return false;
     setSaveState("저장 중…");
     try {
-      await callApi({ action: "saveReflection", code: studentCode, studentNumber: Number(studentNumber), letter: nextLetter, strengths: nextStrengths });
-      setSaveState("온라인에 자동 저장됐어요 ✓");
-    } catch (saveError) { setSaveState((saveError as Error).message); }
+      await callApi({ action: "saveReflection", code: studentCode, studentNumber: Number(studentNumber), reflectionType: reflectionChoice, letter: reflectionChoice === "letter" ? letter : "", strengths: reflectionChoice === "strengths" ? strengths : ["", ""] });
+      setSaveState("따뜻한 마음을 저장했어요 ✓");
+      return true;
+    } catch (saveError) { setSaveState((saveError as Error).message); return false; }
   }
-  function scheduleSave(nextLetter: string, nextStrengths: string[]) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveState("입력 중…");
-    saveTimer.current = setTimeout(() => void saveReflection(nextLetter, nextStrengths), 700);
+  async function handleReflectionComplete() {
+    setBusy(true);
+    const saved = await saveReflection();
+    if (saved) {
+      setStudentResult(null); setResultRevealed(false); setReflectionChoice("");
+      showMessage("따뜻한 마음을 전했어요. 참여해 줘서 고마워요! 💗");
+    }
+    setBusy(false);
   }
 
   async function handleEndActivity() {
-    if (!dashboard || !window.confirm("현재 활동을 종료할까요? 학생은 이후 받은 편지와 장점을 확인할 수 있어요.")) return;
+    if (!dashboard || !window.confirm("현재 활동을 종료할까요? 학생은 이후 받은 편지 또는 장점을 확인할 수 있어요.")) return;
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
-      setDashboard(data); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
+      setDashboard(data); showMessage("활동을 종료했어요. 학생은 받은 편지 또는 장점을 확인할 수 있습니다.");
     } catch (endError) { showMessage((endError as Error).message, true); }
     finally { setBusy(false); }
   }
@@ -234,23 +240,25 @@ export default function Home() {
       },
     }, { signal: lifecycle.signal }));
     report(context.registerTool({
-      name: "save_student_reflection", title: "비밀 편지와 장점 저장",
-      description: "진행 중인 반에 학생의 비밀 편지와 마니또 장점 두 가지를 저장합니다.",
+      name: "save_student_reflection", title: "친구에게 전할 마음 저장",
+      description: "진행 중인 반에 비밀 편지 또는 마니또 장점 두 가지 중 하나를 저장합니다.",
       inputSchema: { type: "object", properties: {
         classCode: { type: "string" }, studentNumber: { type: "integer", minimum: 1, maximum: 50 },
+        reflectionType: { type: "string", enum: ["letter", "strengths"] },
         letter: { type: "string", maxLength: 200 },
         strengths: { type: "array", items: { type: "string", maxLength: 50 }, maxItems: 2 },
-      }, required: ["classCode", "studentNumber", "letter", "strengths"], additionalProperties: false },
+      }, required: ["classCode", "studentNumber", "reflectionType"], additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: async (input: unknown) => {
-        const value = input as { classCode?: unknown; studentNumber?: unknown; letter?: unknown; strengths?: unknown };
+        const value = input as { classCode?: unknown; studentNumber?: unknown; reflectionType?: unknown; letter?: unknown; strengths?: unknown };
         const code = normalizeCode(String(value.classCode ?? "")); const number = Number(value.studentNumber);
-        const nextLetter = String(value.letter ?? "").slice(0, 200);
-        const nextStrengths = Array.isArray(value.strengths) ? value.strengths.slice(0, 2).map((item) => String(item).slice(0, 50)) : [];
+        const nextType = String(value.reflectionType ?? "");
+        const nextLetter = nextType === "letter" ? String(value.letter ?? "").slice(0, 200) : "";
+        const nextStrengths = nextType === "strengths" && Array.isArray(value.strengths) ? value.strengths.slice(0, 2).map((item) => String(item).slice(0, 50)) : [];
         if (code.length !== 6 || !Number.isInteger(number)) throw new Error("반 코드와 번호를 확인해 주세요.");
-        await callApi({ action: "saveReflection", code, studentNumber: number, letter: nextLetter, strengths: nextStrengths });
+        await callApi({ action: "saveReflection", code, studentNumber: number, reflectionType: nextType, letter: nextLetter, strengths: nextStrengths });
         setStudentCode(code); setStudentNumber(String(number)); setLetter(nextLetter);
-        setStrengths([nextStrengths[0] || "", nextStrengths[1] || ""]); setSaveState("온라인에 저장됐어요 ✓");
+        setStrengths([nextStrengths[0] || "", nextStrengths[1] || ""]); setReflectionChoice(nextType === "letter" ? "letter" : "strengths"); setSaveState("온라인에 저장됐어요 ✓");
         return { saved: true, studentNumber: number };
       },
     }, { signal: lifecycle.signal }));
@@ -263,9 +271,10 @@ export default function Home() {
   const progress = dashboard ? Math.round((dashboard.viewedNumbers.length / dashboard.participantCount) * 100) : 0;
   const participantNumbers = dashboard ? Array.from({ length: dashboard.studentCount }, (_, index) => index + 1).filter((number) => !dashboard.excludedNumbers.includes(number)) : [];
   const pendingViewed = dashboard ? participantNumbers.filter((number) => !dashboard.viewedNumbers.includes(number)) : [];
-  const pendingLetters = dashboard ? participantNumbers.filter((number) => !dashboard.letterNumbers.includes(number)) : [];
-  const pendingStrengths = dashboard ? participantNumbers.filter((number) => !dashboard.strengthNumbers.includes(number)) : [];
+  const completedReflectionNumbers = dashboard ? [...new Set([...dashboard.letterNumbers, ...dashboard.strengthNumbers])].sort((a, b) => a - b) : [];
+  const pendingReflections = dashboard ? participantNumbers.filter((number) => !completedReflectionNumbers.includes(number)) : [];
   const numberList = (numbers: number[]) => numbers.length ? numbers.map((number) => `${number}번`).join(", ") : "없음";
+  const canFinishReflection = reflectionChoice === "letter" ? Boolean(letter.trim()) : reflectionChoice === "strengths" ? Boolean(strengths[0].trim() && strengths[1].trim()) : false;
 
   return (
     <main className="page-shell">
@@ -335,14 +344,13 @@ export default function Home() {
           <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
           <div className="completion-lines"><p><b>확인 완료</b>{numberList([...dashboard.viewedNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 확인 전</b>{numberList(pendingViewed)}</p></div>
-          <div className="writing-status" aria-label="편지와 장점 작성 현황">
-            <article><div><span aria-hidden="true">💌</span><strong>비밀 편지 작성</strong><b>{dashboard.letterNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList([...dashboard.letterNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingLetters)}</p></article>
-            <article><div><span aria-hidden="true">🌟</span><strong>장점 2가지 작성</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList([...dashboard.strengthNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingStrengths)}</p></article>
+          <div className="writing-status single" aria-label="마음 전하기 작성 현황">
+            <article><div><span aria-hidden="true">💌</span><strong>마음 전하기 완료</strong><b>{completedReflectionNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList(completedReflectionNumbers)}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingReflections)}</p></article>
           </div>
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary">
               <h3>🌷 활동이 종료되었어요</h3>
-              <p>학생은 학생용 화면에서 자신에게 도착한 편지와 장점을 확인할 수 있어요.</p>
+              <p>학생은 학생용 화면에서 자신에게 도착한 편지 또는 장점을 확인할 수 있어요.</p>
               <div className="end-note">💌 누가 나를 지켜본 마니또인지는 공개되지 않아요.</div>
             </div>}
         </section>
@@ -362,7 +370,7 @@ export default function Home() {
         {studentResult && !resultRevealed && <div className="privacy-cover">
           <div className="privacy-icon" aria-hidden="true">🙈</div>
           <h3>비밀 화면이 준비됐어요</h3>
-          <p>{studentResult.mode === "active" ? "주변 친구가 보지 않도록 휴대폰을 가까이 들고 확인해 주세요." : "받은 편지와 장점은 나만 조용히 확인해요."}</p>
+          <p>{studentResult.mode === "active" ? "주변 친구가 보지 않도록 휴대폰을 가까이 들고 확인해 주세요." : "친구가 남긴 마음은 나만 조용히 확인해요."}</p>
           <button className="button privacy-open" onClick={() => setResultRevealed(true)}>🔐 혼자 확인하기</button>
         </div>}
         {activeResult && resultRevealed && <div className="student-result">
@@ -370,14 +378,16 @@ export default function Home() {
           <p className="result-guide">{activeResult.className}의 {activeResult.targetNumber}번 친구를 따뜻하게 지켜봐 주세요. 다른 친구에게는 비밀!</p>
           <div className="mission-box"><p>{activeResult.customMission ? "선생님이 전한 비밀 미션" : "오늘의 마니또 미션"}</p><strong>{chosenMission}</strong></div>
           {!extraMissionVisible ? <button className="button extra" onClick={() => setExtraMissionVisible(true)}>🎁 미션 하나 더 도전하기</button> : <div className="mission-box extra-box"><p>추가 비밀 미션</p><strong>{extraMission}</strong></div>}
-          <label className="reflection">💌 마니또에게 남길 비밀 편지 <small>(선택)</small><textarea value={letter} onChange={(e) => { const next = e.target.value.slice(0, 200); setLetter(next); scheduleSave(next, strengths); }} rows={4} maxLength={200} placeholder="친구에게 전하고 싶은 따뜻한 말을 적어 보세요." /><span>{letter.length} / 200자</span></label>
-          <fieldset className="strengths"><legend>🌟 마니또의 장점 2가지 <small>(선택)</small></legend><label>첫 번째 장점<input value={strengths[0]} onChange={(e) => { const next = [e.target.value.slice(0, 50), strengths[1]]; setStrengths(next); scheduleSave(letter, next); }} maxLength={50} placeholder="예: 친구의 말을 잘 들어줘요" /></label><label>두 번째 장점<input value={strengths[1]} onChange={(e) => { const next = [strengths[0], e.target.value.slice(0, 50)]; setStrengths(next); scheduleSave(letter, next); }} maxLength={50} placeholder="예: 항상 밝게 인사해요" /></label></fieldset>
+          <fieldset className="reflection-choice"><legend>마음을 전하는 방법을 하나 골라 주세요 <b>필수</b></legend><div><label className={reflectionChoice === "letter" ? "selected" : ""}><input type="radio" name="reflection-choice" checked={reflectionChoice === "letter"} onChange={() => { setReflectionChoice("letter"); setStrengths(["", ""]); setSaveState(""); }} /><span>💌 비밀 편지</span><small>따뜻한 말을 편지로 전해요</small></label><label className={reflectionChoice === "strengths" ? "selected" : ""}><input type="radio" name="reflection-choice" checked={reflectionChoice === "strengths"} onChange={() => { setReflectionChoice("strengths"); setLetter(""); setSaveState(""); }} /><span>🌟 장점 2가지</span><small>친구의 좋은 점을 두 가지 적어요</small></label></div></fieldset>
+          {reflectionChoice === "letter" && <label className="reflection">💌 마니또에게 남길 비밀 편지<textarea value={letter} onChange={(e) => { setLetter(e.target.value.slice(0, 200)); setSaveState(""); }} rows={4} maxLength={200} placeholder="친구에게 전하고 싶은 따뜻한 말을 적어 보세요." /><span>{letter.length} / 200자</span></label>}
+          {reflectionChoice === "strengths" && <fieldset className="strengths"><legend>🌟 마니또의 장점 2가지</legend><label>첫 번째 장점<input value={strengths[0]} onChange={(e) => { setStrengths([e.target.value.slice(0, 50), strengths[1]]); setSaveState(""); }} maxLength={50} placeholder="예: 친구의 말을 잘 들어줘요" /></label><label>두 번째 장점<input value={strengths[1]} onChange={(e) => { setStrengths([strengths[0], e.target.value.slice(0, 50)]); setSaveState(""); }} maxLength={50} placeholder="예: 항상 밝게 인사해요" /></label></fieldset>}
           <p className="save-state" aria-live="polite">{saveState}</p>
+          {!canFinishReflection && <p className="required-guide">선택한 내용을 모두 작성하면 다음으로 갈 수 있어요.</p>}
           <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
-          <button className="button quiet" onClick={() => { if (saveTimer.current) clearTimeout(saveTimer.current); void saveReflection(); setStudentResult(null); setResultRevealed(false); setMessage(""); }}>확인했어요</button>
+          <button className="button quiet" onClick={() => void handleReflectionComplete()} disabled={!canFinishReflection || busy}>{busy ? "저장 중…" : "확인했어요"}</button>
         </div>}
         {studentResult?.mode === "ended" && resultRevealed && <div className="student-result end-reveal">
-          <p className="result-label">나에게 도착한</p><h3>비밀 편지와 장점 💌</h3><p className="result-guide">누가 쓴 편지인지는 공개되지 않아요.</p>
+          <p className="result-label">나에게 도착한</p><h3>친구의 따뜻한 마음 💌</h3><p className="result-guide">누가 남겼는지는 공개되지 않아요.</p>
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
           <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
