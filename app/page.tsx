@@ -65,12 +65,17 @@ export default function Home() {
   const [strengths, setStrengths] = useState(["", ""]);
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
   const [saveState, setSaveState] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function markDashboardUpdated() {
+    setLastUpdated(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+  }
 
   function showMessage(text: string, isError = false) { setMessage(text); setError(isError); }
   function goHome() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin("");
+    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin(""); setLastUpdated("");
     setMessage(""); setError(false); setBusy(false);
   }
   function openStudent(code = studentCode) {
@@ -81,14 +86,16 @@ export default function Home() {
     if (!teacherCode || !teacherPin) return;
     try {
       const data = await callApi<TeacherDashboard>({ action: "teacherOpen", code: teacherCode, pin: teacherPin });
-      setDashboard(data);
+      setDashboard(data); markDashboardUpdated();
       if (!silent) showMessage("최신 확인 현황으로 새로고침했어요.");
     } catch (refreshError) { if (!silent) showMessage((refreshError as Error).message, true); }
   }
 
   useEffect(() => {
     if (screen !== "teacher-dashboard" || !dashboard || dashboard.status !== "active") return;
-    const interval = window.setInterval(() => void refreshDashboard(true), 5000);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshDashboard(true);
+    }, 15000);
     return () => window.clearInterval(interval);
   }, [screen, dashboard?.status, teacherCode, teacherPin]);
 
@@ -98,7 +105,7 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "teacherOpen", code: teacherCode, pin: teacherPin });
-      setDashboard(data); setTeacherCode(data.code); setScreen("teacher-dashboard");
+      setDashboard(data); setTeacherCode(data.code); setScreen("teacher-dashboard"); markDashboardUpdated();
       showMessage(`${data.className} 교사용 화면을 열었어요.`);
     } catch (openError) { showMessage((openError as Error).message, true); }
     finally { setBusy(false); }
@@ -128,7 +135,7 @@ export default function Home() {
         action: "createClass", className: form.get("className"), studentCount: Number(form.get("studentCount")),
         excludedNumbers, pin, customMissions,
       });
-      setTeacherPin(pin); setTeacherCode(data.code); setDashboard(data); setScreen("teacher-dashboard");
+      setTeacherPin(pin); setTeacherCode(data.code); setDashboard(data); setScreen("teacher-dashboard"); markDashboardUpdated();
       showMessage("온라인 반을 만들었어요. 아래 반 코드를 학생들에게 알려 주세요.");
     } catch (createError) { showMessage((createError as Error).message, true); }
     finally { setBusy(false); }
@@ -178,7 +185,7 @@ export default function Home() {
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
-      setDashboard(data); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
+      setDashboard(data); markDashboardUpdated(); showMessage("활동을 종료했어요. 학생은 받은 편지와 장점을 확인할 수 있습니다.");
     } catch (endError) { showMessage((endError as Error).message, true); }
     finally { setBusy(false); }
   }
@@ -333,7 +340,7 @@ export default function Home() {
         <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><div className="class-code-actions"><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button><button className="button site-share" onClick={shareStudentSite}>📤 학생용 사이트 공유</button></div></div>
         <p className="share-guide">공유한 사이트를 연 뒤 학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 직접 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
         <section className="status-card">
-          <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
+          <div className="status-heading"><div><h3>학생 확인 현황</h3>{dashboard.status === "active" && <p className="auto-refresh"><span aria-hidden="true" />15초마다 자동 갱신{lastUpdated && ` · ${lastUpdated}`}</p>}</div><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
           <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
           <p>{dashboard.viewedNumbers.length ? `확인 완료: ${[...dashboard.viewedNumbers].sort((a, b) => a - b).map((n) => `${n}번`).join(", ")}` : "아직 확인한 학생이 없어요."}</p>
           <div className="writing-status" aria-label="편지와 장점 작성 현황">
