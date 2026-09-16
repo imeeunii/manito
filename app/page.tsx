@@ -17,6 +17,7 @@ type EndedStudentResult = {
 };
 type StudentResult = ActiveStudentResult | EndedStudentResult;
 type ReflectionChoice = "" | "letter" | "strengths";
+type CompletionMode = "sent" | "received";
 
 const DEFAULT_MISSIONS = [
   "먼저 웃으며 반갑게 인사하기", "친구가 잘한 점을 찾아 한 번 칭찬하기",
@@ -65,6 +66,7 @@ export default function Home() {
   const [letter, setLetter] = useState("");
   const [strengths, setStrengths] = useState(["", ""]);
   const [reflectionChoice, setReflectionChoice] = useState<ReflectionChoice>("");
+  const [completionMode, setCompletionMode] = useState<CompletionMode>("sent");
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
   const [saveState, setSaveState] = useState("");
 
@@ -169,7 +171,7 @@ export default function Home() {
     if (saved) {
       setStudentResult(null); setResultRevealed(false); setReflectionChoice("");
       setStudentCode(""); setStudentNumber(""); setLetter(""); setStrengths(["", ""]);
-      showMessage(""); setScreen("student-complete");
+      setCompletionMode("sent"); showMessage(""); setScreen("student-complete");
     }
     setBusy(false);
   }
@@ -424,17 +426,17 @@ export default function Home() {
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
           <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
-          <button className="button quiet" onClick={() => { setStudentResult(null); setResultRevealed(false); setMessage(""); }}>확인했어요</button>
+          <button className="button quiet" onClick={() => { setStudentResult(null); setResultRevealed(false); setStudentCode(""); setStudentNumber(""); setLetter(""); setStrengths(["", ""]); setReflectionChoice(""); setCompletionMode("received"); setMessage(""); setScreen("student-complete"); }}>확인했어요</button>
         </div>}
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
       </section>}
 
       {screen === "student-complete" && <section className="panel student-panel completion-panel" aria-labelledby="completion-title">
-        <div className="completion-icon" aria-hidden="true">💌</div>
+        <div className="completion-icon" aria-hidden="true">{completionMode === "sent" ? "💌" : "🌷"}</div>
         <div className="completion-sparkles" aria-hidden="true"><span>✨</span><span>🌼</span><span>✨</span></div>
-        <h2 id="completion-title">마음을 잘 전했어요!</h2>
-        <p>친구를 따뜻하게 바라보고 좋은 마음을 남겨 줘서 고마워요.</p>
-        <div className="completion-reminder">🤫 활동이 끝날 때까지 마니또는 우리만의 비밀이에요.</div>
+        <h2 id="completion-title">{completionMode === "sent" ? "마음을 잘 전했어요!" : "따뜻한 마음을 확인했어요!"}</h2>
+        <p>{completionMode === "sent" ? "친구를 따뜻하게 바라보고 좋은 마음을 남겨 줘서 고마워요." : "친구가 발견해 준 나의 좋은 점과 따뜻한 마음을 오래 기억해 주세요."}</p>
+        <div className="completion-reminder">{completionMode === "sent" ? "🤫 활동이 끝날 때까지 마니또는 우리만의 비밀이에요." : "💗 누가 남겼는지는 공개되지 않지만, 따뜻한 마음은 소중히 간직해요."}</div>
         <button className="button primary" onClick={goHome}>처음 화면으로</button>
       </section>}
 
