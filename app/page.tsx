@@ -175,7 +175,15 @@ export default function Home() {
   }
 
   async function handleEndActivity() {
-    if (!dashboard || !window.confirm("현재 활동을 종료할까요? 학생은 이후 받은 편지 또는 장점을 확인할 수 있어요.")) return;
+    if (!dashboard) return;
+    const unfinishedLines = [
+      pendingViewed.length ? `마니또 확인 전: ${numberList(pendingViewed)}` : "",
+      pendingReflections.length ? `마음 전하기 작성 전: ${numberList(pendingReflections)}` : "",
+    ].filter(Boolean);
+    const confirmText = unfinishedLines.length
+      ? `아직 완료하지 않은 학생이 있어요.\n\n${unfinishedLines.join("\n")}\n\n그래도 활동을 종료할까요? 종료 후에는 더 이상 작성할 수 없어요.`
+      : "모든 학생이 참여를 마쳤어요. 현재 활동을 종료할까요?";
+    if (!window.confirm(confirmText)) return;
     setBusy(true);
     try {
       const data = await callApi<TeacherDashboard>({ action: "endActivity", code: teacherCode, pin: teacherPin });
@@ -348,6 +356,7 @@ export default function Home() {
           <div className="writing-status single" aria-label="마음 전하기 작성 현황">
             <article><div><span aria-hidden="true">💌</span><strong>마음 전하기 완료</strong><b>{completedReflectionNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList(completedReflectionNumbers)}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingReflections)}</p></article>
           </div>
+          {dashboard.status === "active" && (pendingViewed.length > 0 || pendingReflections.length > 0) && <p className="end-warning">⚠️ 아직 참여를 마치지 않은 학생이 있어요. 종료하기 전에 번호를 확인해 주세요.</p>}
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary">
               <h3>🌷 활동이 종료되었어요</h3>
