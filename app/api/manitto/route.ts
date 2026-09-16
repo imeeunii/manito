@@ -15,6 +15,7 @@ type ClassRow = {
 type EntryRow = {
   student_number: number;
   viewed_at: string | null;
+  received_viewed_at: string | null;
   letter: string;
   strength_one: string;
   strength_two: string;
@@ -108,7 +109,7 @@ async function requireTeacher(codeValue: unknown, pinValue: unknown) {
 async function teacherDashboard(row: ClassRow) {
   const entries = await getDatabase()
     .prepare(
-      "SELECT student_number, viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? ORDER BY student_number"
+      "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? ORDER BY student_number"
     )
     .bind(row.id)
     .all<EntryRow>();
@@ -122,6 +123,9 @@ async function teacherDashboard(row: ClassRow) {
   const strengthNumbers = entries.results
     .filter((entry) => entry.strength_one.trim() && entry.strength_two.trim())
     .map((entry) => entry.student_number);
+  const receivedViewedNumbers = entries.results
+    .filter((entry) => entry.received_viewed_at)
+    .map((entry) => entry.student_number);
   const dashboard: Record<string, unknown> = {
     code: row.code,
     className: row.name,
@@ -131,6 +135,7 @@ async function teacherDashboard(row: ClassRow) {
     viewedNumbers,
     letterNumbers,
     strengthNumbers,
+    receivedViewedNumbers,
     status: row.status,
   };
 
@@ -219,7 +224,7 @@ async function studentCheck(payload: Record<string, unknown>) {
     const entry = sender
       ? await getDatabase()
           .prepare(
-            "SELECT student_number, viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
+            "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
           )
           .bind(row.id, Number(sender))
           .first<EntryRow>()
@@ -242,7 +247,7 @@ async function studentCheck(payload: Record<string, unknown>) {
     .run();
   const entry = await getDatabase()
     .prepare(
-      "SELECT student_number, viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
+      "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
     )
     .bind(row.id, studentNumber)
     .first<EntryRow>();
@@ -293,6 +298,26 @@ async function saveReflection(payload: Record<string, unknown>) {
   return { saved: true };
 }
 
+async function acknowledgeReceived(payload: Record<string, unknown>) {
+  const code = cleanCode(payload.code);
+  const studentNumber = Number(payload.studentNumber);
+  const row = await findClass(code);
+  if (!row) throw new Response("반 코드를 확인해 주세요.", { status: 404 });
+  if (row.status !== "ended") {
+    throw new Response("활동이 종료된 뒤에 확인할 수 있어요.", { status: 409 });
+  }
+  if (!Number.isInteger(studentNumber) || !participantsFor(row).includes(studentNumber)) {
+    throw new Response("참여하는 번호를 정확히 입력해 주세요.", { status: 400 });
+  }
+  await getDatabase()
+    .prepare(
+      "INSERT INTO student_entries (class_id, student_number, received_viewed_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT(class_id, student_number) DO UPDATE SET received_viewed_at = COALESCE(student_entries.received_viewed_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP"
+    )
+    .bind(row.id, studentNumber)
+    .run();
+  return { acknowledged: true };
+}
+
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
@@ -304,6 +329,7 @@ export async function POST(request: Request) {
     }
     if (action === "studentCheck") return Response.json(await studentCheck(payload));
     if (action === "saveReflection") return Response.json(await saveReflection(payload));
+    if (action === "acknowledgeReceived") return Response.json(await acknowledgeReceived(payload));
     if (action === "endActivity") {
       const row = await requireTeacher(payload.code, payload.pin);
       await getDatabase().prepare("UPDATE classes SET status = 'ended' WHERE id = ?").bind(row.id).run();

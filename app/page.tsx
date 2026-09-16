@@ -6,6 +6,7 @@ type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard
 type TeacherDashboard = {
   code: string; className: string; studentCount: number; excludedNumbers: number[];
   participantCount: number; viewedNumbers: number[]; letterNumbers: number[]; strengthNumbers: number[];
+  receivedViewedNumbers: number[];
   status: "active" | "ended";
 };
 type ActiveStudentResult = {
@@ -176,6 +177,18 @@ export default function Home() {
     setBusy(false);
   }
 
+  async function handleReceivedComplete() {
+    if (!studentResult || studentResult.mode !== "ended") return;
+    setBusy(true);
+    try {
+      await callApi({ action: "acknowledgeReceived", code: studentCode, studentNumber: Number(studentNumber) });
+      setStudentResult(null); setResultRevealed(false); setStudentCode(""); setStudentNumber("");
+      setLetter(""); setStrengths(["", ""]); setReflectionChoice("");
+      setCompletionMode("received"); showMessage(""); setScreen("student-complete");
+    } catch (completeError) { showMessage((completeError as Error).message, true); }
+    finally { setBusy(false); }
+  }
+
   async function handleEndActivity() {
     if (!dashboard) return;
     const unfinishedLines = [
@@ -301,11 +314,15 @@ export default function Home() {
   const activeResult = studentResult?.mode === "active" ? studentResult : null;
   const chosenMission = activeResult ? activeResult.customMission || DEFAULT_MISSIONS[(Number(studentNumber) * 3 + activeResult.targetNumber) % DEFAULT_MISSIONS.length] : "";
   const extraMission = activeResult ? DEFAULT_MISSIONS[(Number(studentNumber) * 5 + activeResult.targetNumber + 7) % DEFAULT_MISSIONS.length] : "";
-  const progress = dashboard ? Math.round((dashboard.viewedNumbers.length / dashboard.participantCount) * 100) : 0;
   const participantNumbers = dashboard ? Array.from({ length: dashboard.studentCount }, (_, index) => index + 1).filter((number) => !dashboard.excludedNumbers.includes(number)) : [];
   const pendingViewed = dashboard ? participantNumbers.filter((number) => !dashboard.viewedNumbers.includes(number)) : [];
   const completedReflectionNumbers = dashboard ? [...new Set([...dashboard.letterNumbers, ...dashboard.strengthNumbers])].sort((a, b) => a - b) : [];
   const pendingReflections = dashboard ? participantNumbers.filter((number) => !completedReflectionNumbers.includes(number)) : [];
+  const receivedViewedNumbers = dashboard ? [...dashboard.receivedViewedNumbers].sort((a, b) => a - b) : [];
+  const pendingReceived = dashboard ? participantNumbers.filter((number) => !dashboard.receivedViewedNumbers.includes(number)) : [];
+  const displayedViewedNumbers = dashboard?.status === "ended" ? receivedViewedNumbers : [...(dashboard?.viewedNumbers ?? [])].sort((a, b) => a - b);
+  const displayedPendingNumbers = dashboard?.status === "ended" ? pendingReceived : pendingViewed;
+  const displayedProgress = dashboard ? Math.round((displayedViewedNumbers.length / dashboard.participantCount) * 100) : 0;
   const numberList = (numbers: number[]) => numbers.length ? numbers.map((number) => `${number}번`).join(", ") : "없음";
   const canFinishReflection = reflectionChoice === "letter" ? Boolean(letter.trim()) : reflectionChoice === "strengths" ? Boolean(strengths[0].trim() && strengths[1].trim()) : false;
 
@@ -374,9 +391,9 @@ export default function Home() {
         <div className="class-code-card"><p>학생에게 알려 줄 반 코드</p><strong>{dashboard.code}</strong><div className="class-code-actions"><button className="button code-copy" onClick={copyCode}>📋 코드 복사</button><button className="button site-share" onClick={shareStudentSite}>📤 학생용 사이트 공유</button></div></div>
         <p className="share-guide">공유한 사이트를 연 뒤 학생은 <strong>학생용 → 반 코드 → 번호</strong> 순서로 직접 입력하면 돼요. 다른 반은 다른 코드로 동시에 사용할 수 있습니다.</p>
         <section className="status-card">
-          <div className="status-heading"><h3>학생 확인 현황</h3><strong>{dashboard.viewedNumbers.length} / {dashboard.participantCount}명</strong></div>
-          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={dashboard.viewedNumbers.length}><span style={{ width: `${progress}%` }} /></div>
-          <div className="completion-lines"><p><b>확인 완료</b>{numberList([...dashboard.viewedNumbers].sort((a, b) => a - b))}</p><p className="pending"><b>아직 확인 전</b>{numberList(pendingViewed)}</p></div>
+          <div className="status-heading"><h3>{dashboard.status === "ended" ? "받은 마음 확인 현황" : "학생 확인 현황"}</h3><strong>{displayedViewedNumbers.length} / {dashboard.participantCount}명</strong></div>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={dashboard.participantCount} aria-valuenow={displayedViewedNumbers.length}><span style={{ width: `${displayedProgress}%` }} /></div>
+          <div className="completion-lines"><p><b>확인 완료</b>{numberList(displayedViewedNumbers)}</p><p className="pending"><b>아직 확인 전</b>{numberList(displayedPendingNumbers)}</p></div>
           <div className="writing-status single" aria-label="마음 전하기 작성 현황">
             <article><div><span aria-hidden="true">💌</span><strong>마음 전하기 완료</strong><b>{completedReflectionNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList(completedReflectionNumbers)}</p><p className="pending"><b>아직 작성 전</b>{numberList(pendingReflections)}</p></article>
           </div>
@@ -426,7 +443,7 @@ export default function Home() {
           <div className="received"><p>받은 편지</p><strong>{studentResult.received.letter || "아직 도착한 편지가 없어요."}</strong></div>
           <div className="received"><p>🌟 친구가 적어 준 나의 장점</p>{studentResult.received.strengths.length ? <ol>{studentResult.received.strengths.map((value, index) => <li key={index}>{value}</li>)}</ol> : <strong>아직 적어 준 장점이 없어요.</strong>}</div>
           <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
-          <button className="button quiet" onClick={() => { setStudentResult(null); setResultRevealed(false); setStudentCode(""); setStudentNumber(""); setLetter(""); setStrengths(["", ""]); setReflectionChoice(""); setCompletionMode("received"); setMessage(""); setScreen("student-complete"); }}>확인했어요</button>
+          <button className="button quiet" onClick={() => void handleReceivedComplete()} disabled={busy}>{busy ? "확인 저장 중…" : "확인했어요"}</button>
         </div>}
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
       </section>}

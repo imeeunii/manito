@@ -22,6 +22,7 @@ export const studentEntries = sqliteTable(
       .references(() => classes.id, { onDelete: "cascade" }),
     studentNumber: integer("student_number").notNull(),
     viewedAt: text("viewed_at"),
+    receivedViewedAt: text("received_viewed_at"),
     letter: text("letter").notNull().default(""),
     strengthOne: text("strength_one").notNull().default(""),
     strengthTwo: text("strength_two").notNull().default(""),
