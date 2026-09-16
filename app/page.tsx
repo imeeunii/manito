@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard" | "student";
+type Screen = "roles" | "teacher-access" | "teacher-create" | "teacher-dashboard" | "student" | "student-complete";
 type TeacherDashboard = {
   code: string; className: string; studentCount: number; excludedNumbers: number[];
   participantCount: number; viewedNumbers: number[]; letterNumbers: number[]; strengthNumbers: number[];
@@ -168,7 +168,8 @@ export default function Home() {
     const saved = await saveReflection();
     if (saved) {
       setStudentResult(null); setResultRevealed(false); setReflectionChoice("");
-      showMessage("따뜻한 마음을 전했어요. 참여해 줘서 고마워요! 💗");
+      setStudentCode(""); setStudentNumber(""); setLetter(""); setStrengths(["", ""]);
+      showMessage(""); setScreen("student-complete");
     }
     setBusy(false);
   }
@@ -394,6 +395,15 @@ export default function Home() {
           <button className="button quiet" onClick={() => { setStudentResult(null); setResultRevealed(false); setMessage(""); }}>확인했어요</button>
         </div>}
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
+      </section>}
+
+      {screen === "student-complete" && <section className="panel student-panel completion-panel" aria-labelledby="completion-title">
+        <div className="completion-icon" aria-hidden="true">💌</div>
+        <div className="completion-sparkles" aria-hidden="true"><span>✨</span><span>🌼</span><span>✨</span></div>
+        <h2 id="completion-title">마음을 잘 전했어요!</h2>
+        <p>친구를 따뜻하게 바라보고 좋은 마음을 남겨 줘서 고마워요.</p>
+        <div className="completion-reminder">🤫 활동이 끝날 때까지 마니또는 우리만의 비밀이에요.</div>
+        <button className="button primary" onClick={goHome}>처음 화면으로</button>
       </section>}
 
       <footer>🌈 서로를 존중하며 즐겁게 참여해요!</footer>

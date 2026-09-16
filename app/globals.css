@@ -209,6 +209,12 @@ textarea { resize: vertical; line-height: 1.6; }
 .received p { margin-bottom: 8px; font-size: .8rem; font-weight: 900; }
 .received strong { display: block; color: var(--ink); line-height: 1.65; font-weight: 650; white-space: pre-wrap; }
 .received ol { margin: 6px 0 0; padding-left: 22px; line-height: 1.8; }
+.completion-panel { position: relative; overflow: hidden; text-align: center; }
+.completion-icon { display: grid; width: 86px; height: 86px; margin: 5px auto 17px; place-items: center; font-size: 2.45rem; border: 2px solid #efd3df; border-radius: 30px; background: var(--blush); box-shadow: 0 10px 24px rgba(91,88,126,.12); }
+.completion-sparkles { display: flex; justify-content: center; gap: 17px; margin-bottom: 9px; font-size: 1.05rem; }
+.completion-panel h2 { margin-bottom: 11px; font-size: 1.6rem; }
+.completion-panel > p { margin: 0 auto 19px; max-width: 410px; color: var(--muted); line-height: 1.7; }
+.completion-reminder { margin-bottom: 20px; padding: 15px 17px; color: #64547e; font-size: .9rem; font-weight: 850; line-height: 1.55; border-radius: 15px; background: var(--lavender); }
 footer { margin-top: 27px; color: var(--muted); text-align: center; font-size: .9rem; }
 
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px solid rgba(255,226,128,.75); outline-offset: 3px; }
