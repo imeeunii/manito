@@ -262,6 +262,25 @@ export default function Home() {
       }
     }
   }
+  function downloadParticipationCsv() {
+    if (!dashboard) return;
+    const rows = [
+      ["번호", "마니또 확인", "마음 작성", "받은 마음 확인"],
+      ...participantNumbers.map((number) => [
+        `${number}번`,
+        dashboard.viewedNumbers.includes(number) ? "확인" : "미확인",
+        dashboard.letterNumbers.includes(number) ? "비밀 편지" : dashboard.strengthNumbers.includes(number) ? "장점 2가지" : "미작성",
+        dashboard.status === "ended" ? dashboard.receivedViewedNumbers.includes(number) ? "확인" : "미확인" : "활동 중",
+      ]),
+    ];
+    const csv = rows.map((row) => row.map((value) => `"${value.replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const blobUrl = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    const safeClassName = dashboard.className.replace(/[\\/:*?"<>|]/g, "_");
+    link.href = blobUrl; link.download = `${safeClassName}_마니또_참여현황.csv`; link.click();
+    URL.revokeObjectURL(blobUrl);
+    showMessage("참여 현황 CSV 파일을 저장했어요.");
+  }
   useEffect(() => {
     const context = (document as Document & { modelContext?: {
       registerTool: (tool: Record<string, unknown>, options?: { signal?: AbortSignal }) => void | Promise<void>;
@@ -405,6 +424,7 @@ export default function Home() {
               <div className="end-note">💌 누가 나를 지켜본 마니또인지는 공개되지 않아요.</div>
               <button className="button end-share" onClick={shareEndNotice}>📣 학생에게 종료 안내 공유</button>
             </div>}
+          <button className="button export-status" onClick={downloadParticipationCsv}>📊 참여 현황 CSV 저장</button>
         </section>
         <div className="dashboard-bottom"><button className="button student-shortcut" onClick={() => openStudent(dashboard.code)}>🐣 이 반의 학생용 화면 보기</button><button className="text-button" onClick={handleDeleteClass}>이 반 기록 삭제</button></div>
         <p className={`message ${error ? "error" : ""}`} aria-live="polite">{message}</p>
