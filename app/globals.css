@@ -87,7 +87,7 @@ h1 { margin-bottom: 8px; font-size: clamp(2.35rem, 7vw, 4.25rem); line-height: 1
 .panel-heading h2 { margin: 0; font-size: 1.55rem; }
 
 .form-stack { display: grid; gap: 18px; }
-.form-stack label, .reflection, .strengths label, .mission-fields label {
+.form-stack label, .strengths label, .acrostic label, .mission-fields label {
   display: grid; gap: 8px; color: var(--ink); font-weight: 850; font-size: .95rem;
 }
 small { color: var(--muted); font-weight: 650; }
@@ -156,12 +156,13 @@ textarea { resize: vertical; line-height: 1.6; }
 .completion-lines .pending, .writing-status article > p.pending { color: #8a6570; }
 .completion-lines .pending b, .writing-status article > p.pending b { color: #9a596c; }
 .writing-status { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 18px; }
-.writing-status.single { grid-template-columns: 1fr; }
 .writing-status article { padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: white; }
 .writing-status article > div { display: grid; grid-template-columns: auto 1fr; gap: 4px 7px; align-items: center; }
 .writing-status article b { grid-column: 2; color: var(--blue-dark); font-size: .9rem; }
 .writing-status article > p:first-of-type { margin-top: 10px; }
 .writing-status article > p + p { margin-top: 5px; }
+.writing-total { margin: -3px 0 18px; color: var(--blue-dark); font-size: .87rem; line-height: 1.6; }
+.writing-total span { color: #8a6570; }
 .end-warning { margin: 0 0 12px; padding: 12px 14px; color: #8a5865; font-size: .84rem; font-weight: 800; line-height: 1.55; border: 1px solid #efd0d8; border-radius: 13px; background: #fff1f4; }
 .dashboard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .end-summary { margin-top: 18px; padding-top: 19px; border-top: 1px solid var(--line); }
@@ -191,19 +192,15 @@ textarea { resize: vertical; line-height: 1.6; }
 .mission-box strong { display: block; line-height: 1.6; }
 .extra { color: #6e588e; background: var(--lavender); }
 .extra-box { background: var(--lavender); }
-.reflection-choice { margin: 22px 0 0; padding: 0; text-align: left; border: 0; }
-.reflection-choice legend { margin-bottom: 11px; font-weight: 900; }
-.reflection-choice legend b { margin-left: 5px; color: #9a596c; font-size: .78rem; }
-.reflection-choice > div { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.reflection-choice label { position: relative; display: grid; gap: 4px; padding: 15px; cursor: pointer; border: 2px solid var(--line); border-radius: 16px; background: white; }
-.reflection-choice label.selected { border-color: #9c8ad0; background: var(--lavender); box-shadow: 0 0 0 3px rgba(156,138,208,.13); }
-.reflection-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.reflection-choice span { font-weight: 900; }
-.reflection-choice small { color: var(--muted); font-size: .8rem; line-height: 1.45; }
-.reflection { margin-top: 22px; text-align: left; }
-.reflection span { color: var(--muted); text-align: right; font-size: .78rem; font-weight: 600; }
-.strengths { display: grid; gap: 12px; margin: 18px 0 0; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: 17px; background: #fbfffd; }
-.strengths legend { padding: 0 7px; font-weight: 900; }
+.reflection-intro { margin: 22px 0 0; text-align: left; font-weight: 800; line-height: 1.5; }
+.reflection-intro b { color: #9a596c; }
+.strengths, .acrostic { display: grid; gap: 12px; margin: 18px 0 0; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: 17px; background: #fbfffd; }
+.strengths legend, .acrostic legend { padding: 0 7px; font-weight: 900; }
+.strengths > p, .acrostic > p { margin: 0 0 3px; color: var(--muted); font-size: .83rem; line-height: 1.5; }
+.strength-list { display: grid; gap: 12px; }
+.acrostic-lines { display: grid; gap: 10px; margin-top: 4px; }
+.acrostic-lines label { display: grid; grid-template-columns: 36px 1fr; align-items: center; }
+.acrostic-lines label strong { display: grid; width: 34px; height: 34px; place-items: center; color: var(--blue-dark); border-radius: 10px; background: var(--lavender); }
 .save-state { min-height: 20px; margin: 10px 0 0; color: var(--mint-dark); font-size: .82rem; font-weight: 750; }
 .required-guide { margin: -4px 0 10px; color: #9a596c; font-size: .83rem; font-weight: 800; }
 .end-reveal h3 { font-size: 1.55rem; }
@@ -212,6 +209,9 @@ textarea { resize: vertical; line-height: 1.6; }
 .received p { margin-bottom: 8px; font-size: .8rem; font-weight: 900; }
 .received strong { display: block; color: var(--ink); line-height: 1.65; font-weight: 650; white-space: pre-wrap; }
 .received ol { margin: 6px 0 0; padding-left: 22px; line-height: 1.8; }
+.received-poem { list-style: none; padding-left: 0 !important; }
+.received-poem li { display: flex; gap: 10px; white-space: pre-wrap; }
+.received-poem b { color: var(--blue-dark); }
 .completion-panel { position: relative; overflow: hidden; text-align: center; }
 .completion-icon { display: grid; width: 86px; height: 86px; margin: 5px auto 17px; place-items: center; font-size: 2.45rem; border: 2px solid #efd3df; border-radius: 30px; background: var(--blush); box-shadow: 0 10px 24px rgba(91,88,126,.12); }
 .completion-sparkles { display: flex; justify-content: center; gap: 17px; margin-bottom: 9px; font-size: 1.05rem; }
@@ -244,7 +244,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px
   .privacy-cover { padding-top: 18px; }
   .privacy-icon { width: 72px; height: 72px; }
   .privacy-open { min-height: 58px; }
-  .role-buttons, .dashboard-actions, .mission-fields, .writing-status, .reflection-choice > div { grid-template-columns: 1fr; }
+  .role-buttons, .dashboard-actions, .mission-fields, .writing-status { grid-template-columns: 1fr; }
   .role-button { min-height: 104px; }
   .class-code-card { grid-template-columns: 1fr; text-align: center; }
   .class-code-card p, .class-code-card > strong, .class-code-actions { grid-column: 1; grid-row: auto; }
@@ -256,9 +256,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px
   .result-number strong { font-size: 3.4rem; }
   .result-guide { font-size: .95rem; }
   .mission-box { margin-top: 17px; padding: 17px; }
-  .reflection { margin-top: 19px; }
-  .reflection textarea { min-height: 132px; }
-  .strengths { padding: 16px; }
+  .strengths, .acrostic { padding: 16px; }
   .quiet { margin-top: 14px; }
   .received { padding: 17px; }
   footer { margin-top: 20px; padding-bottom: env(safe-area-inset-bottom); }

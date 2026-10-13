@@ -1,4 +1,6 @@
-import { env } from "cloudflare:workers";
+import { getDatabase } from "@/db";
+
+export const runtime = "nodejs";
 
 type ClassRow = {
   id: number;
@@ -16,19 +18,16 @@ type EntryRow = {
   student_number: number;
   viewed_at: string | null;
   received_viewed_at: string | null;
-  letter: string;
   strength_one: string;
   strength_two: string;
+  strength_three: string;
+  poem_name: string;
+  poem_line_one: string;
+  poem_line_two: string;
+  poem_line_three: string;
 };
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function getDatabase() {
-  if (!env.DB) {
-    throw new Error("온라인 저장소를 사용할 수 없습니다.");
-  }
-  return env.DB;
-}
 
 function cleanCode(value: unknown) {
   return String(value ?? "")
@@ -109,7 +108,7 @@ async function requireTeacher(codeValue: unknown, pinValue: unknown) {
 async function teacherDashboard(row: ClassRow) {
   const entries = await getDatabase()
     .prepare(
-      "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? ORDER BY student_number"
+      "SELECT student_number, viewed_at, received_viewed_at, strength_one, strength_two, strength_three, poem_name, poem_line_one, poem_line_two, poem_line_three FROM student_entries WHERE class_id = ? ORDER BY student_number"
     )
     .bind(row.id)
     .all<EntryRow>();
@@ -117,11 +116,11 @@ async function teacherDashboard(row: ClassRow) {
   const viewedNumbers = entries.results
     .filter((entry) => entry.viewed_at)
     .map((entry) => entry.student_number);
-  const letterNumbers = entries.results
-    .filter((entry) => entry.letter.trim())
-    .map((entry) => entry.student_number);
   const strengthNumbers = entries.results
-    .filter((entry) => entry.strength_one.trim() && entry.strength_two.trim())
+    .filter((entry) => entry.strength_one.trim() && entry.strength_two.trim() && entry.strength_three.trim())
+    .map((entry) => entry.student_number);
+  const poemNumbers = entries.results
+    .filter((entry) => Array.from(entry.poem_name).length === 3 && entry.poem_line_one.trim() && entry.poem_line_two.trim() && entry.poem_line_three.trim())
     .map((entry) => entry.student_number);
   const receivedViewedNumbers = entries.results
     .filter((entry) => entry.received_viewed_at)
@@ -133,8 +132,8 @@ async function teacherDashboard(row: ClassRow) {
     excludedNumbers: parseJson<number[]>(row.excluded_numbers, []),
     participantCount: participantNumbers.length,
     viewedNumbers,
-    letterNumbers,
     strengthNumbers,
+    poemNumbers,
     receivedViewedNumbers,
     status: row.status,
   };
@@ -203,7 +202,9 @@ async function createClass(payload: Record<string, unknown>) {
       if (!row) throw new Error("생성한 반을 찾을 수 없습니다.");
       return teacherDashboard(row);
     } catch (error) {
-      if (!String(error).includes("UNIQUE")) throw error;
+      if (!(error && typeof error === "object" && "code" in error && error.code === "23505")) {
+        throw error;
+      }
     }
   }
   throw new Error("반 코드를 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
@@ -224,7 +225,7 @@ async function studentCheck(payload: Record<string, unknown>) {
     const entry = sender
       ? await getDatabase()
           .prepare(
-            "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
+            "SELECT student_number, viewed_at, received_viewed_at, strength_one, strength_two, strength_three, poem_name, poem_line_one, poem_line_two, poem_line_three FROM student_entries WHERE class_id = ? AND student_number = ?"
           )
           .bind(row.id, Number(sender))
           .first<EntryRow>()
@@ -233,8 +234,9 @@ async function studentCheck(payload: Record<string, unknown>) {
       mode: "ended",
       className: row.name,
       received: {
-        letter: entry?.letter ?? "",
-        strengths: [entry?.strength_one ?? "", entry?.strength_two ?? ""].filter(Boolean),
+        strengths: [entry?.strength_one ?? "", entry?.strength_two ?? "", entry?.strength_three ?? ""],
+        poemName: entry?.poem_name ?? "",
+        poemLines: [entry?.poem_line_one ?? "", entry?.poem_line_two ?? "", entry?.poem_line_three ?? ""],
       },
     };
   }
@@ -247,7 +249,7 @@ async function studentCheck(payload: Record<string, unknown>) {
     .run();
   const entry = await getDatabase()
     .prepare(
-      "SELECT student_number, viewed_at, received_viewed_at, letter, strength_one, strength_two FROM student_entries WHERE class_id = ? AND student_number = ?"
+      "SELECT student_number, viewed_at, received_viewed_at, strength_one, strength_two, strength_three, poem_name, poem_line_one, poem_line_two, poem_line_three FROM student_entries WHERE class_id = ? AND student_number = ?"
     )
     .bind(row.id, studentNumber)
     .first<EntryRow>();
@@ -258,8 +260,9 @@ async function studentCheck(payload: Record<string, unknown>) {
     targetNumber: assignments[String(studentNumber)],
     customMission: missions[String(studentNumber)] ?? "",
     reflection: {
-      letter: entry?.letter ?? "",
-      strengths: [entry?.strength_one ?? "", entry?.strength_two ?? ""],
+      strengths: [entry?.strength_one ?? "", entry?.strength_two ?? "", entry?.strength_three ?? ""],
+      poemName: entry?.poem_name ?? "",
+      poemLines: [entry?.poem_line_one ?? "", entry?.poem_line_two ?? "", entry?.poem_line_three ?? ""],
     },
   };
 }
@@ -275,25 +278,25 @@ async function saveReflection(payload: Record<string, unknown>) {
   if (!Number.isInteger(studentNumber) || !participantsFor(row).includes(studentNumber)) {
     throw new Response("참여하는 번호를 정확히 입력해 주세요.", { status: 400 });
   }
-  const reflectionType = String(payload.reflectionType ?? "");
-  const strengths = Array.isArray(payload.strengths) ? payload.strengths : [];
-  const letter = reflectionType === "letter" ? cleanText(payload.letter, 200) : "";
-  const strengthOne = reflectionType === "strengths" ? cleanText(strengths[0], 50) : "";
-  const strengthTwo = reflectionType === "strengths" ? cleanText(strengths[1], 50) : "";
-  if (reflectionType === "letter" && !letter) {
-    throw new Response("비밀 편지를 작성해 주세요.", { status: 400 });
+  const submittedStrengths = Array.isArray(payload.strengths) ? payload.strengths : [];
+  const strengths = [0, 1, 2].map((index) => cleanText(submittedStrengths[index], 50));
+  const poemName = cleanText(payload.poemName, 12).replace(/\s/g, "");
+  const submittedLines = Array.isArray(payload.poemLines) ? payload.poemLines : [];
+  const poemLines = [0, 1, 2].map((index) => cleanText(submittedLines[index], 80));
+  if (strengths.some((strength) => !strength)) {
+    throw new Response("친구의 장점 세 가지를 모두 작성해 주세요.", { status: 400 });
   }
-  if (reflectionType === "strengths" && (!strengthOne || !strengthTwo)) {
-    throw new Response("마니또의 장점 두 가지를 모두 작성해 주세요.", { status: 400 });
+  if (Array.from(poemName).length !== 3) {
+    throw new Response("삼행시에 사용할 이름이나 별명은 3글자로 적어 주세요.", { status: 400 });
   }
-  if (reflectionType !== "letter" && reflectionType !== "strengths") {
-    throw new Response("비밀 편지 또는 장점 2가지 중 하나를 선택해 주세요.", { status: 400 });
+  if (poemLines.some((line) => !line)) {
+    throw new Response("이름 삼행시의 세 줄을 모두 작성해 주세요.", { status: 400 });
   }
   await getDatabase()
     .prepare(
-      "INSERT INTO student_entries (class_id, student_number, viewed_at, letter, strength_one, strength_two, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(class_id, student_number) DO UPDATE SET letter = excluded.letter, strength_one = excluded.strength_one, strength_two = excluded.strength_two, updated_at = CURRENT_TIMESTAMP"
+      "INSERT INTO student_entries (class_id, student_number, viewed_at, strength_one, strength_two, strength_three, poem_name, poem_line_one, poem_line_two, poem_line_three, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(class_id, student_number) DO UPDATE SET strength_one = excluded.strength_one, strength_two = excluded.strength_two, strength_three = excluded.strength_three, poem_name = excluded.poem_name, poem_line_one = excluded.poem_line_one, poem_line_two = excluded.poem_line_two, poem_line_three = excluded.poem_line_three, updated_at = CURRENT_TIMESTAMP"
     )
-    .bind(row.id, studentNumber, letter, strengthOne, strengthTwo)
+    .bind(row.id, studentNumber, strengths[0], strengths[1], strengths[2], poemName, poemLines[0], poemLines[1], poemLines[2])
     .run();
   return { saved: true };
 }
@@ -348,9 +351,6 @@ export async function POST(request: Request) {
       return Response.json({ error: await error.text() }, { status: error.status });
     }
     console.error(error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "잠시 뒤 다시 시도해 주세요." },
-      { status: 500 }
-    );
+    return Response.json({ error: "잠시 뒤 다시 시도해 주세요." }, { status: 500 });
   }
 }
