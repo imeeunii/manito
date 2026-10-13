@@ -1,5 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
+
+const a2g = localFont({
+  src: [
+    { path: "./fonts/a2g-extralight.ttf", weight: "200", style: "normal" },
+    { path: "./fonts/a2g-medium.ttf", weight: "500", style: "normal" },
+    { path: "./fonts/a2g-bold.ttf", weight: "700", style: "normal" },
+    { path: "./fonts/a2g-black.ttf", weight: "900", style: "normal" },
+  ],
+  variable: "--font-a2g",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "우리 반 마니또",
@@ -23,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={a2g.variable}>
       <body className="antialiased">{children}</body>
     </html>
   );
