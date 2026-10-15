@@ -198,6 +198,12 @@ textarea { resize: vertical; line-height: 1.6; }
 .extra-box { background: var(--lavender); }
 .reflection-intro { margin: 22px 0 0; text-align: left; font-weight: 500; line-height: 1.5; }
 .reflection-intro b { color: #9a596c; }
+.reflection-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.reflection-choice button {
+  min-height: 52px; padding: 12px; color: var(--ink); font-weight: 700; border: 2px solid var(--line);
+  border-radius: 15px; background: white;
+}
+.reflection-choice button[aria-pressed="true"] { color: var(--blue-dark); border-color: var(--blue); background: var(--lavender); }
 .strengths, .acrostic { display: grid; gap: 12px; margin: 18px 0 0; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: 17px; background: #fbfffd; }
 .strengths legend, .acrostic legend { padding: 0 7px; font-weight: 700; }
 .strengths > p, .acrostic > p { margin: 0 0 3px; color: var(--muted); font-size: .83rem; font-weight: 200; line-height: 1.5; }

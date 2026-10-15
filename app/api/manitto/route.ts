@@ -283,14 +283,19 @@ async function saveReflection(payload: Record<string, unknown>) {
   const poemName = cleanText(payload.poemName, 12).replace(/\s/g, "");
   const submittedLines = Array.isArray(payload.poemLines) ? payload.poemLines : [];
   const poemLines = [0, 1, 2].map((index) => cleanText(submittedLines[index], 80));
-  if (strengths.some((strength) => !strength)) {
-    throw new Response("친구의 장점 세 가지를 모두 작성해 주세요.", { status: 400 });
+  const strengthsComplete = strengths.every((strength) => strength);
+  const poemComplete = Array.from(poemName).length === 3 && poemLines.every((line) => line);
+  if (strengths.some((strength) => strength) && !strengthsComplete) {
+    throw new Response("장점을 남기려면 세 가지를 모두 작성해 주세요.", { status: 400 });
   }
-  if (Array.from(poemName).length !== 3) {
-    throw new Response("삼행시에 사용할 이름이나 별명은 3글자로 적어 주세요.", { status: 400 });
-  }
-  if (poemLines.some((line) => !line)) {
+  if ((poemName || poemLines.some((line) => line)) && !poemComplete) {
+    if (Array.from(poemName).length !== 3) {
+      throw new Response("삼행시에 사용할 이름이나 별명은 3글자로 적어 주세요.", { status: 400 });
+    }
     throw new Response("이름 삼행시의 세 줄을 모두 작성해 주세요.", { status: 400 });
+  }
+  if (!strengthsComplete && !poemComplete) {
+    throw new Response("장점 세 가지나 이름 삼행시 중 하나를 완성해 주세요.", { status: 400 });
   }
   await getDatabase()
     .prepare(

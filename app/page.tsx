@@ -48,6 +48,16 @@ function normalizeCode(value: string) {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 
+type ReflectionChoice = "strengths" | "poem";
+
+function isStrengthsComplete(values: string[]) {
+  return values.length === 3 && values.every((strength) => strength.trim());
+}
+
+function isPoemComplete(name: string, lines: string[]) {
+  return Array.from(name.replace(/\s/g, "")).length === 3 && lines.length === 3 && lines.every((line) => line.trim());
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("roles");
   const [message, setMessage] = useState("");
@@ -66,17 +76,18 @@ export default function Home() {
   const [strengths, setStrengths] = useState(["", "", ""]);
   const [poemName, setPoemName] = useState("");
   const [poemLines, setPoemLines] = useState(["", "", ""]);
+  const [reflectionChoice, setReflectionChoice] = useState<ReflectionChoice | null>(null);
   const [completionMode, setCompletionMode] = useState<CompletionMode>("sent");
   const [extraMissionVisible, setExtraMissionVisible] = useState(false);
   const [saveState, setSaveState] = useState("");
 
   function showMessage(text: string, isError = false) { setMessage(text); setError(isError); }
   function goHome() {
-    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setTeacherPin("");
+    setScreen("roles"); setDashboard(null); setStudentResult(null); setResultRevealed(false); setReflectionChoice(null); setTeacherPin("");
     setMessage(""); setError(false); setBusy(false);
   }
   function openStudent(code = studentCode) {
-    setStudentCode(code); setStudentResult(null); setResultRevealed(false); setMessage(""); setScreen("student");
+    setStudentCode(code); setStudentResult(null); setResultRevealed(false); setReflectionChoice(null); setMessage(""); setScreen("student");
   }
 
   async function refreshDashboard(silent = false) {
@@ -146,9 +157,13 @@ export default function Home() {
       const data = await callApi<StudentResult>({ action: "studentCheck", code, studentNumber: number });
       setStudentCode(code); setStudentNumber(String(number)); setStudentResult(data); setResultRevealed(false); setExtraMissionVisible(false);
       if (data.mode === "active") {
-        setStrengths([data.reflection.strengths[0] || "", data.reflection.strengths[1] || "", data.reflection.strengths[2] || ""]);
-        setPoemName(data.reflection.poemName || "");
-        setPoemLines([data.reflection.poemLines[0] || "", data.reflection.poemLines[1] || "", data.reflection.poemLines[2] || ""]);
+        const loadedStrengths = [data.reflection.strengths[0] || "", data.reflection.strengths[1] || "", data.reflection.strengths[2] || ""];
+        const loadedPoemName = data.reflection.poemName || "";
+        const loadedPoemLines = [data.reflection.poemLines[0] || "", data.reflection.poemLines[1] || "", data.reflection.poemLines[2] || ""];
+        setStrengths(loadedStrengths);
+        setPoemName(loadedPoemName);
+        setPoemLines(loadedPoemLines);
+        setReflectionChoice(isStrengthsComplete(loadedStrengths) ? "strengths" : isPoemComplete(loadedPoemName, loadedPoemLines) ? "poem" : null);
         setSaveState(""); showMessage("비밀 결과가 준비됐어요. 혼자 확인하기를 눌러 주세요.");
       } else showMessage("친구의 마음이 도착했어요. 혼자 확인해 보세요.");
       setScreen("student"); return data;
@@ -160,7 +175,16 @@ export default function Home() {
     if (!studentResult || studentResult.mode !== "active" || !canFinishReflection) return false;
     setSaveState("저장 중…");
     try {
-      await callApi({ action: "saveReflection", code: studentCode, studentNumber: Number(studentNumber), strengths, poemName, poemLines });
+      const strengthsReady = isStrengthsComplete(strengths);
+      const poemReady = isPoemComplete(poemName, poemLines);
+      await callApi({
+        action: "saveReflection",
+        code: studentCode,
+        studentNumber: Number(studentNumber),
+        strengths: strengthsReady ? strengths : ["", "", ""],
+        poemName: poemReady ? poemName : "",
+        poemLines: poemReady ? poemLines : ["", "", ""],
+      });
       setSaveState("따뜻한 마음을 저장했어요 ✓");
       return true;
     } catch (saveError) { setSaveState((saveError as Error).message); return false; }
@@ -169,7 +193,7 @@ export default function Home() {
     setBusy(true);
     const saved = await saveReflection();
     if (saved) {
-      setStudentResult(null); setResultRevealed(false);
+      setStudentResult(null); setResultRevealed(false); setReflectionChoice(null);
       setStudentCode(""); setStudentNumber(""); setStrengths(["", "", ""]); setPoemName(""); setPoemLines(["", "", ""]);
       setCompletionMode("sent"); showMessage(""); setScreen("student-complete");
     }
@@ -181,7 +205,7 @@ export default function Home() {
     setBusy(true);
     try {
       await callApi({ action: "acknowledgeReceived", code: studentCode, studentNumber: Number(studentNumber) });
-      setStudentResult(null); setResultRevealed(false); setStudentCode(""); setStudentNumber("");
+      setStudentResult(null); setResultRevealed(false); setReflectionChoice(null); setStudentCode(""); setStudentNumber("");
       setStrengths(["", "", ""]); setPoemName(""); setPoemLines(["", "", ""]);
       setCompletionMode("received"); showMessage(""); setScreen("student-complete");
     } catch (completeError) { showMessage((completeError as Error).message, true); }
@@ -306,13 +330,13 @@ export default function Home() {
     }, { signal: lifecycle.signal }));
     report(context.registerTool({
       name: "save_student_reflection", title: "친구에게 전할 마음 저장",
-      description: "진행 중인 반에 친구의 장점 세 가지와 이름 삼행시를 함께 저장합니다.",
+      description: "진행 중인 반에 친구의 장점 세 가지 또는 이름 삼행시 중 완성한 활동을 저장합니다.",
       inputSchema: { type: "object", properties: {
         classCode: { type: "string" }, studentNumber: { type: "integer", minimum: 1, maximum: 50 },
         strengths: { type: "array", items: { type: "string", maxLength: 50 }, minItems: 3, maxItems: 3 },
         poemName: { type: "string", description: "삼행시에 사용할 친구 이름 또는 별명 3글자" },
         poemLines: { type: "array", items: { type: "string", maxLength: 80 }, minItems: 3, maxItems: 3 },
-      }, required: ["classCode", "studentNumber", "strengths", "poemName", "poemLines"], additionalProperties: false },
+      }, required: ["classCode", "studentNumber"], additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: true },
       execute: async (input: unknown) => {
         const value = input as { classCode?: unknown; studentNumber?: unknown; strengths?: unknown; poemName?: unknown; poemLines?: unknown };
@@ -321,9 +345,16 @@ export default function Home() {
         const nextPoemName = String(value.poemName ?? "").trim();
         const nextPoemLines = Array.isArray(value.poemLines) ? value.poemLines.slice(0, 3).map((item) => String(item).slice(0, 80)) : [];
         if (code.length !== 6 || !Number.isInteger(number)) throw new Error("반 코드와 번호를 확인해 주세요.");
-        await callApi({ action: "saveReflection", code, studentNumber: number, strengths: nextStrengths, poemName: nextPoemName, poemLines: nextPoemLines });
-        setStudentCode(code); setStudentNumber(String(number)); setStrengths([nextStrengths[0] || "", nextStrengths[1] || "", nextStrengths[2] || ""]);
-        setPoemName(nextPoemName); setPoemLines([nextPoemLines[0] || "", nextPoemLines[1] || "", nextPoemLines[2] || ""]); setSaveState("온라인에 저장됐어요 ✓");
+        const savedStrengths = [nextStrengths[0] || "", nextStrengths[1] || "", nextStrengths[2] || ""];
+        const savedLines = [nextPoemLines[0] || "", nextPoemLines[1] || "", nextPoemLines[2] || ""];
+        if (!isStrengthsComplete(savedStrengths) && !isPoemComplete(nextPoemName, savedLines)) {
+          throw new Error("장점 세 가지나 이름 삼행시 중 하나를 완성해 주세요.");
+        }
+        await callApi({ action: "saveReflection", code, studentNumber: number, strengths: savedStrengths, poemName: nextPoemName, poemLines: savedLines });
+        setStudentCode(code); setStudentNumber(String(number)); setStrengths(savedStrengths);
+        setPoemName(nextPoemName); setPoemLines(savedLines);
+        setReflectionChoice(isStrengthsComplete(savedStrengths) ? "strengths" : "poem");
+        setSaveState("온라인에 저장됐어요 ✓");
         return { saved: true, studentNumber: number };
       },
     }, { signal: lifecycle.signal }));
@@ -335,7 +366,7 @@ export default function Home() {
   const extraMission = activeResult ? DEFAULT_MISSIONS[(Number(studentNumber) * 5 + activeResult.targetNumber + 7) % DEFAULT_MISSIONS.length] : "";
   const participantNumbers = dashboard ? Array.from({ length: dashboard.studentCount }, (_, index) => index + 1).filter((number) => !dashboard.excludedNumbers.includes(number)) : [];
   const pendingViewed = dashboard ? participantNumbers.filter((number) => !dashboard.viewedNumbers.includes(number)) : [];
-  const completedReflectionNumbers = dashboard ? dashboard.strengthNumbers.filter((number) => dashboard.poemNumbers.includes(number)).sort((a, b) => a - b) : [];
+  const completedReflectionNumbers = dashboard ? participantNumbers.filter((number) => dashboard.strengthNumbers.includes(number) || dashboard.poemNumbers.includes(number)) : [];
   const pendingReflections = dashboard ? participantNumbers.filter((number) => !completedReflectionNumbers.includes(number)) : [];
   const receivedViewedNumbers = dashboard ? [...dashboard.receivedViewedNumbers].sort((a, b) => a - b) : [];
   const pendingReceived = dashboard ? participantNumbers.filter((number) => !dashboard.receivedViewedNumbers.includes(number)) : [];
@@ -344,7 +375,9 @@ export default function Home() {
   const displayedProgress = dashboard ? Math.round((displayedViewedNumbers.length / dashboard.participantCount) * 100) : 0;
   const numberList = (numbers: number[]) => numbers.length ? numbers.map((number) => `${number}번`).join(", ") : "없음";
   const poemSyllables = Array.from(poemName);
-  const canFinishReflection = Boolean(strengths.every((strength) => strength.trim()) && poemSyllables.length === 3 && poemLines.every((line) => line.trim()));
+  const strengthsReady = isStrengthsComplete(strengths);
+  const poemReady = isPoemComplete(poemName, poemLines);
+  const canFinishReflection = reflectionChoice === "strengths" ? strengthsReady : reflectionChoice === "poem" ? poemReady : false;
 
   return (
     <main className="page-shell">
@@ -418,7 +451,7 @@ export default function Home() {
             <article><div><span aria-hidden="true">🌟</span><strong>장점 3가지</strong><b>{dashboard.strengthNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList(dashboard.strengthNumbers)}</p></article>
             <article><div><span aria-hidden="true">📝</span><strong>이름 삼행시</strong><b>{dashboard.poemNumbers.length} / {dashboard.participantCount}명</b></div><p><b>작성 완료</b>{numberList(dashboard.poemNumbers)}</p></article>
           </div>
-          <p className="writing-total"><strong>두 활동 모두 완료</strong> {completedReflectionNumbers.length} / {dashboard.participantCount}명 · <span>아직 완료 전: {numberList(pendingReflections)}</span></p>
+          <p className="writing-total"><strong>마음 전하기 완료</strong> {completedReflectionNumbers.length} / {dashboard.participantCount}명 · <span>아직 완료 전: {numberList(pendingReflections)}</span></p>
           {dashboard.status === "active" && (pendingViewed.length > 0 || pendingReflections.length > 0) && <p className="end-warning">⚠️ 아직 참여를 마치지 않은 학생이 있어요. 종료하기 전에 번호를 확인해 주세요.</p>}
           {dashboard.status === "active" ? <div className="dashboard-actions"><button className="button soft" onClick={() => void refreshDashboard()} disabled={busy}>🔄 현황 새로고침</button><button className="button danger" onClick={handleEndActivity} disabled={busy}>현재 활동 종료</button></div> :
             <div className="end-summary">
@@ -453,11 +486,15 @@ export default function Home() {
           <p className="result-guide">{activeResult.className}의 {activeResult.targetNumber}번 친구를 따뜻하게 지켜봐 주세요. 다른 친구에게는 비밀!</p>
           <div className="mission-box"><p>{activeResult.customMission ? "선생님이 전한 비밀 미션" : "오늘의 마니또 미션"}</p><strong>{chosenMission}</strong></div>
           {!extraMissionVisible ? <button className="button extra" onClick={() => setExtraMissionVisible(true)}>🎁 미션 하나 더 도전하기</button> : <div className="mission-box extra-box"><p>추가 비밀 미션</p><strong>{extraMission}</strong></div>}
-          <p className="reflection-intro">마음을 전하는 두 활동을 모두 작성해 주세요. <b>둘 다 필수</b></p>
-          <fieldset className="strengths"><legend>🌟 마니또 친구의 장점 3가지</legend><p>친구를 보며 발견한 좋은 점을 하나씩 적어 주세요.</p>{[0, 1, 2].map((index) => <label key={index}>{index + 1}번째 장점<input value={strengths[index]} onChange={(e) => { setStrengths((current) => current.map((strength, strengthIndex) => strengthIndex === index ? e.target.value.slice(0, 50) : strength)); setSaveState(""); }} maxLength={50} placeholder="친구의 좋은 점을 적어 주세요" /></label>)}</fieldset>
-          <fieldset className="acrostic"><legend>📝 친구 이름 삼행시</legend><p>친구 이름이 두 글자라면 세 글자 별명을 지어 주세요. 각 글자 뒤에 이어질 말을 적으면 돼요.</p><label>삼행시에 사용할 이름 또는 별명 (3글자)<input value={poemName} onChange={(e) => { setPoemName(Array.from(e.target.value.replace(/\s/g, "")).slice(0, 3).join("")); setSaveState(""); }} placeholder="예: 김민수" maxLength={6} /></label><div className="acrostic-lines">{[0, 1, 2].map((index) => <label key={index}><strong>{poemSyllables[index] || `${index + 1}행`}</strong><input value={poemLines[index]} onChange={(e) => { setPoemLines((current) => current.map((line, lineIndex) => lineIndex === index ? e.target.value.slice(0, 80) : line)); setSaveState(""); }} maxLength={80} placeholder="이 글자 뒤에 이어질 말을 적어 주세요" /></label>)}</div></fieldset>
+          <p className="reflection-intro">장점 3가지와 이름 삼행시 중 <b>하나만</b> 골라 작성해 주세요.</p>
+          <div className="reflection-choice" role="group" aria-label="작성할 활동">
+            <button type="button" aria-pressed={reflectionChoice === "strengths"} onClick={() => { setReflectionChoice("strengths"); setSaveState(""); }}>🌟 장점 3가지</button>
+            <button type="button" aria-pressed={reflectionChoice === "poem"} onClick={() => { setReflectionChoice("poem"); setSaveState(""); }}>📝 이름 삼행시</button>
+          </div>
+          {reflectionChoice === "strengths" && <fieldset className="strengths"><legend>🌟 마니또 친구의 장점 3가지</legend><p>친구를 보며 발견한 좋은 점을 하나씩 적어 주세요.</p>{[0, 1, 2].map((index) => <label key={index}>{index + 1}번째 장점<input value={strengths[index]} onChange={(e) => { setStrengths((current) => current.map((strength, strengthIndex) => strengthIndex === index ? e.target.value.slice(0, 50) : strength)); setSaveState(""); }} maxLength={50} placeholder="친구의 좋은 점을 적어 주세요" /></label>)}</fieldset>}
+          {reflectionChoice === "poem" && <fieldset className="acrostic"><legend>📝 친구 이름 삼행시</legend><p>친구 이름이 두 글자라면 세 글자 별명을 지어 주세요. 각 글자 뒤에 이어질 말을 적으면 돼요.</p><label>삼행시에 사용할 이름 또는 별명 (3글자)<input value={poemName} onChange={(e) => { setPoemName(Array.from(e.target.value.replace(/\s/g, "")).slice(0, 3).join("")); setSaveState(""); }} placeholder="예: 김민수" maxLength={6} /></label><div className="acrostic-lines">{[0, 1, 2].map((index) => <label key={index}><strong>{poemSyllables[index] || `${index + 1}행`}</strong><input value={poemLines[index]} onChange={(e) => { setPoemLines((current) => current.map((line, lineIndex) => lineIndex === index ? e.target.value.slice(0, 80) : line)); setSaveState(""); }} maxLength={80} placeholder="이 글자 뒤에 이어질 말을 적어 주세요" /></label>)}</div></fieldset>}
           <p className="save-state" aria-live="polite">{saveState}</p>
-          {!canFinishReflection && <p className="required-guide">장점 3가지와 이름 삼행시 세 줄을 모두 작성하면 다음으로 갈 수 있어요.</p>}
+          {!canFinishReflection && <p className="required-guide">{reflectionChoice ? "고른 활동을 끝까지 작성하면 제출할 수 있어요." : "장점 3가지나 이름 삼행시 중 하나를 골라 주세요."}</p>}
           <button className="privacy-hide" onClick={() => setResultRevealed(false)}>🙈 화면 다시 가리기</button>
           <button className="button quiet" onClick={() => void handleReflectionComplete()} disabled={!canFinishReflection || busy}>{busy ? "저장 중…" : "확인했어요"}</button>
         </div>}
